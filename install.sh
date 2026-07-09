@@ -7,6 +7,7 @@ set -e
 REPO="0xClumzzy/pulse"
 INSTALL_DIR="$HOME/.local/bin"
 BINARY_NAME="pulse"
+VERSION="v0.1.0"
 
 # Colors
 RED='\033[0;31m'
@@ -33,9 +34,11 @@ check_arch() {
     case $ARCH in
         x86_64|amd64)
             ARCH="x86_64"
+            DEB_ARCH="amd64"
             ;;
         aarch64|arm64)
             ARCH="aarch64"
+            DEB_ARCH="arm64"
             ;;
         *)
             echo -e "${RED}Error: Unsupported architecture $ARCH${NC}"
@@ -48,8 +51,20 @@ check_os() {
     OS=$(uname -s)
     if [ "$OS" != "Linux" ]; then
         echo -e "${RED}Error: This installer only supports Linux${NC}"
-        echo -e "${YELLOW}For macOS, download from: https://github.com/$REPO/releases${NC}"
+        echo -e "${YELLOW}For other platforms, download from: https://github.com/$REPO/releases${NC}"
         exit 1
+    fi
+}
+
+detect_distro() {
+    if command -v pacman &> /dev/null; then
+        DISTRO="arch"
+    elif command -v apt &> /dev/null; then
+        DISTRO="debian"
+    elif command -v dnf &> /dev/null; then
+        DISTRO="fedora"
+    else
+        DISTRO="unknown"
     fi
 }
 
@@ -72,33 +87,81 @@ check_dependencies() {
         echo -e "${YELLOW}Install them with your package manager for full functionality${NC}"
         echo ""
         
-        # Try to detect distro and suggest install command
-        if command -v pacman &> /dev/null; then
-            echo -e "  ${GREEN}sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator3 librsvg openssl${NC}"
-        elif command -v apt &> /dev/null; then
-            echo -e "  ${GREEN}sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 librsvg2-0 libssl3${NC}"
-        elif command -v dnf &> /dev/null; then
-            echo -e "  ${GREEN}sudo dnf install webkit2gtk4.1 gtk3 libappindicator-gtk3 librsvg2 openssl${NC}"
-        fi
+        case $DISTRO in
+            arch)
+                echo -e "  ${GREEN}sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator3 librsvg openssl${NC}"
+                ;;
+            debian)
+                echo -e "  ${GREEN}sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 librsvg2-0 libssl3${NC}"
+                ;;
+            fedora)
+                echo -e "  ${GREEN}sudo dnf install webkit2gtk4.1 gtk3 libappindicator-gtk3 librsvg2 openssl${NC}"
+                ;;
+        esac
         echo ""
     fi
 }
 
-get_latest_version() {
-    curl -sL "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | cut -d'"' -f4
-}
-
-download_binary() {
-    local version=$1
-    local url="https://github.com/$REPO/releases/download/$version/pulse-${ARCH}-linux"
+download_and_install() {
+    local deb_url="https://github.com/$REPO/releases/download/$VERSION/pulse_${VERSION#v}_${DEB_ARCH}.deb"
     
-    echo -e "${BLUE}Downloading Pulse $version for $ARCH...${NC}"
+    echo -e "${BLUE}Downloading Pulse $VERSION...${NC}"
     
-    mkdir -p "$INSTALL_DIR"
+    # Create temp directory
+    local tmp_dir=$(mktemp -d)
+    trap "rm -rf $tmp_dir" EXIT
     
-    curl -L -o "$INSTALL_DIR/$BINARY_NAME" "$url" 2>/dev/null
+    # Download deb package
+    curl -L -o "$tmp_dir/pulse.deb" "$deb_url" 2>/dev/null
     
-    chmod +x "$INSTALL_DIR/$BINARY_NAME"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Failed to download package${NC}"
+        echo -e "${YELLOW}Please download manually from: https://github.com/$REPO/releases${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}Installing Pulse...${NC}"
+    
+    # Install based on distro
+    case $DISTRO in
+        arch)
+            # Arch can install debs with debtap or we can extract manually
+            echo -e "${YELLOW}Arch Linux detected. Extracting binary...${NC}"
+            mkdir -p "$INSTALL_DIR"
+            dpkg-deb -x "$tmp_dir/pulse.deb" "$tmp_dir/extracted" 2>/dev/null || {
+                # If dpkg-deb not available, try ar
+                cd "$tmp_dir"
+                ar x pulse.deb 2>/dev/null
+                tar xf data.tar.* 2>/dev/null
+                cd -
+            }
+            cp "$tmp_dir/extracted/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || \
+            cp "$tmp_dir/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || {
+                echo -e "${RED}Error: Could not extract binary${NC}"
+                exit 1
+            }
+            chmod +x "$INSTALL_DIR/$BINARY_NAME"
+            ;;
+        debian|fedora)
+            sudo dpkg -i "$tmp_dir/pulse.deb" 2>/dev/null || sudo apt-get install -f -y 2>/dev/null
+            ;;
+        *)
+            echo -e "${YELLOW}Unknown distro. Extracting binary manually...${NC}"
+            mkdir -p "$INSTALL_DIR"
+            dpkg-deb -x "$tmp_dir/pulse.deb" "$tmp_dir/extracted" 2>/dev/null || {
+                cd "$tmp_dir"
+                ar x pulse.deb 2>/dev/null
+                tar xf data.tar.* 2>/dev/null
+                cd -
+            }
+            cp "$tmp_dir/extracted/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || \
+            cp "$tmp_dir/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || {
+                echo -e "${RED}Error: Could not extract binary${NC}"
+                exit 1
+            }
+            chmod +x "$INSTALL_DIR/$BINARY_NAME"
+            ;;
+    esac
 }
 
 check_path() {
@@ -106,10 +169,25 @@ check_path() {
         echo -e "${YELLOW}Note: $INSTALL_DIR is not in your PATH${NC}"
         echo ""
         echo "  Add it to your shell profile:"
-        echo -e "    ${GREEN}echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc${NC}"
-        echo -e "    ${GREEN}source ~/.bashrc${NC}"
+        echo -e "    ${GREEN}echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc${NC}"
+        echo -e "    ${GREEN}source ~/.zshrc${NC}"
         echo ""
     fi
+}
+
+uninstall() {
+    echo -e "${BLUE}Uninstalling Pulse...${NC}"
+    
+    # Try package manager uninstall first
+    if command -v dpkg &> /dev/null; then
+        sudo dpkg -r pulse 2>/dev/null || true
+    fi
+    
+    # Remove binary if exists
+    rm -f "$HOME/.local/bin/pulse"
+    
+    echo -e "${GREEN}✓ Pulse uninstalled${NC}"
+    exit 0
 }
 
 main() {
@@ -117,19 +195,12 @@ main() {
     
     check_os
     check_arch
+    detect_distro
     
-    local version=$(get_latest_version)
-    
-    if [ -z "$version" ]; then
-        echo -e "${RED}Error: Could not fetch latest version${NC}"
-        echo -e "${YELLOW}Falling back to v0.1.0${NC}"
-        version="v0.1.0"
-    fi
-    
-    echo -e "${GREEN}Latest version: $version${NC}"
+    echo -e "${GREEN}Latest version: $VERSION${NC}"
     echo ""
     
-    download_binary "$version"
+    download_and_install
     
     echo ""
     echo -e "${GREEN}✓ Pulse installed successfully!${NC}"
@@ -155,19 +226,11 @@ while [ $# -gt 0 ]; do
             echo "Options:"
             echo "  --help, -h     Show this help message"
             echo "  --uninstall    Remove Pulse from your system"
-            echo "  --version      Install a specific version"
             echo ""
             exit 0
             ;;
         --uninstall)
-            echo -e "${BLUE}Uninstalling Pulse...${NC}"
-            rm -f "$HOME/.local/bin/pulse"
-            echo -e "${GREEN}✓ Pulse uninstalled${NC}"
-            exit 0
-            ;;
-        --version)
-            shift
-            VERSION="$1"
+            uninstall
             ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
