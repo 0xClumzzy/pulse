@@ -1,27 +1,123 @@
 # Pulse
 
-A blazing fast terminal emulator with glass aesthetics, built with Rust and React.
+<p align="center">
+  <img src="public/favicon.svg" width="100" alt="Pulse Logo">
+</p>
+
+<h3 align="center">A blazing fast terminal emulator with glass aesthetics</h3>
+
+<p align="center">
+  Built with Rust + Tauri for native performance, React + TypeScript for modern UI,
+  and GPU-accelerated rendering for smooth visuals.
+</p>
+
+---
 
 ## Features
 
-- **Glass Aesthetics** - Frosted glass window with blur, noise texture, and shimmer effects
-- **Multiple Tabs** - Create, close, and navigate between tabs
-- **Split Panes** - Split terminals horizontally or vertically
-- **Multiplexing** - Run multiple terminal sessions simultaneously
-- **Theme System** - 6 built-in themes + custom theme support
-- **Fully Customizable** - Fonts, colors, opacity, blur, animations
-- **Keyboard Shortcuts** - Terminator-compatible keybindings
-- **GPU Accelerated** - WebGL rendering for smooth performance
-- **Dark Mode Default** - Catppuccin Mocha theme
+### Glass Aesthetics
+- Frosted glass window with real-time blur
+- Noise texture overlay for depth
+- Shimmer animation effects
+- Customizable opacity (0-100%)
+- Drop shadows with configurable intensity
 
-## Built-in Themes
+### Multiplexing
+- **Multiple tabs** - Run separate sessions in each tab
+- **Split panes** - Divide terminals horizontally or vertically
+- **Recursive splits** - Create complex layouts
+- **Drag resize** - Adjust pane sizes with mouse
 
-- Catppuccin Mocha (default, dark)
-- Catppuccin Latte (light)
-- Dracula
-- Tokyo Night
-- Nord
-- Gruvbox Dark
+### Performance
+- **GPU-accelerated** - WebGL text rendering via xterm.js
+- **Native backend** - Rust PTY management with zero-copy I/O
+- **120fps animations** - GPU-composited transitions
+- **Low memory** - Tauri's minimal footprint
+
+### Customization
+- **6 built-in themes** - Catppuccin, Dracula, Tokyo Night, Nord, Gruvbox
+- **Full theme editor** - Colors, fonts, glass effects
+- **Custom keybindings** - Terminator-compatible defaults
+- **Live preview** - See changes before applying
+
+## Screenshots
+
+<p align="center">
+  <em>Dark mode with Catppuccin Mocha theme</em>
+</p>
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ● ● ●                                    Pulse         │
+├──────────────┬──────────────────────────────────────────┤
+│ Shell 1  ×   │ Shell 2  ×        +                      │
+├──────────────┼──────────────────────────────────────────┤
+│              │                                          │
+│  (clumzzy)   │  (clumzzy) in ~/projects                 │
+│  in ~/code   │  on main ✓                               │
+│              │                                          │
+│  ➤ ls -la    │  ➤ cargo build                           │
+│  total 32    │     Compiling pulse v0.1.0               │
+│  drwxr-xr-x  │     Finished release [optimized]        │
+│              │                                          │
+└──────────────┴──────────────────────────────────────────┘
+```
+
+## Quick Start
+
+### Install from Package
+
+#### Arch Linux (AUR)
+```bash
+yay -S pulse-terminal
+```
+
+#### Debian/Ubuntu
+```bash
+# Download the latest .deb from Releases
+sudo dpkg -i pulse_0.1.0_amd64.deb
+```
+
+#### Fedora/RHEL
+```bash
+# Download the latest .rpm from Releases
+sudo rpm -i pulse-0.1.0-1.x86_64.rpm
+```
+
+#### macOS
+```bash
+# Download the latest .dmg from Releases
+```
+
+### Build from Source
+
+See [docs/BUILDING.md](docs/BUILDING.md) for detailed instructions.
+
+```bash
+# Clone
+git clone https://github.com/0xClumzzy/pulse.git
+cd pulse
+
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run tauri dev
+
+# Build for production
+npm run tauri build
+```
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Installation](docs/INSTALL.md) | Platform-specific install guides |
+| [Building](docs/BUILDING.md) | Build from source instructions |
+| [Keybindings](docs/KEYBINDINGS.md) | Complete keyboard shortcut reference |
+| [Themes](docs/THEMES.md) | Theme system and custom themes |
+| [Configuration](docs/CONFIGURATION.md) | All configuration options |
+| [Contributing](CONTRIBUTING.md) | How to contribute |
 
 ## Keyboard Shortcuts
 
@@ -41,66 +137,59 @@ A blazing fast terminal emulator with glass aesthetics, built with Rust and Reac
 | Split Horizontally | `Ctrl+Shift+O` |
 | Close Pane | `Ctrl+Shift+X` |
 | Navigate Panes | `Ctrl+Shift+Arrow` |
+| Resize Panes | `Ctrl+Shift+Alt+Arrow` |
 
-### Other
+### General
 | Action | Shortcut |
 |--------|----------|
 | Command Palette | `Ctrl+Shift+P` |
 | Search | `Ctrl+Shift+F` |
 | Settings | `Ctrl+Shift+,` |
+| Copy | `Ctrl+Shift+C` |
+| Paste | `Ctrl+Shift+V` |
+| Zoom In | `Ctrl++` |
+| Zoom Out | `Ctrl+-` |
+| Reset Zoom | `Ctrl+0` |
 
-## Prerequisites
+See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for all shortcuts.
 
-### Arch Linux
-```bash
-sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file libappindicator-gtk3 librsvg libnotify openssl
-```
+## Themes
 
-### Ubuntu/Debian
-```bash
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
-```
+| Theme | Variant | Preview |
+|-------|---------|---------|
+| Catppuccin Mocha | Dark | `#1e1e2e` background |
+| Catppuccin Latte | Light | `#eff1f5` background |
+| Dracula | Dark | `#282a36` background |
+| Tokyo Night | Dark | `#1a1b26` background |
+| Nord | Dark | `#2e3440` background |
+| Gruvbox Dark | Dark | `#282828` background |
 
-### Fedora
-```bash
-sudo dnf install webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel
-```
+See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 
-### macOS
-```bash
-xcode-select --install
-```
+## Built With
 
-## Building
+- [Tauri](https://tauri.app/) - Desktop framework
+- [Rust](https://www.rust-lang.org/) - Systems language
+- [React](https://react.dev/) - UI library
+- [xterm.js](https://xtermjs.org/) - Terminal emulator
+- [Framer Motion](https://www.framer.com/motion/) - Animations
 
-```bash
-# Install dependencies
-npm install
+## Roadmap
 
-# Build for production
-npm run tauri build
-
-# Or run in development mode
-npm run tauri dev
-```
-
-## Configuration
-
-Configuration file: `~/.config/pulse/config.toml`
-
-```toml
-[window]
-opacity = 0.85
-blur_radius = 20
-
-[font]
-family = "JetBrains Mono"
-size = 14
-
-[theme]
-name = "catppuccin-mocha"
-```
+- [ ] Sixel graphics support
+- [ ] SSH integration
+- [ ] Session persistence
+- [ ] Custom shaders
+- [ ] Plugin system
+- [ ] Windows Terminal imports
+- [ ] macOS native tabs
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+- Inspired by [Terminator](https://gnome-terminator.org/), [Alacritty](https://alacritty.org/), and [WezTerm](https://wezfurlong.org/wezterm/)
+- Theme colors from [Catppuccin](https://catppuccin.com/)
+- Glass effects inspired by macOS Tahoe
