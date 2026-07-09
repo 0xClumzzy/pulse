@@ -35,10 +35,10 @@ sudo dnf install pulse-0.1.0-1.x86_64.rpm
 #### Arch Linux (AUR)
 ```bash
 # Using yay
-yay -S pulse-terminal
+yay -S pulse
 
 # Using paru
-paru -S pulse-terminal
+paru -S pulse
 ```
 
 #### AppImage
@@ -63,7 +63,7 @@ chmod +x pulse_0.1.0_amd64.AppImage
 
 #### Homebrew
 ```bash
-brew install --cask pulse-terminal
+brew install --cask pulse
 ```
 
 ### Windows
@@ -133,7 +133,7 @@ sudo dpkg -r pulse
 sudo rpm -e pulse
 
 # Arch
-yay -R pulse-terminal
+yay -R pulse
 ```
 
 ### macOS
