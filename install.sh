@@ -7,7 +7,6 @@ set -e
 REPO="0xClumzzy/pulse"
 INSTALL_DIR="$HOME/.local/bin"
 BINARY_NAME="pulse"
-VERSION="v0.1.0"
 
 # Colors
 RED='\033[0;31m'
@@ -29,24 +28,6 @@ print_banner() {
     echo ""
 }
 
-check_arch() {
-    ARCH=$(uname -m)
-    case $ARCH in
-        x86_64|amd64)
-            ARCH="x86_64"
-            DEB_ARCH="amd64"
-            ;;
-        aarch64|arm64)
-            ARCH="aarch64"
-            DEB_ARCH="arm64"
-            ;;
-        *)
-            echo -e "${RED}Error: Unsupported architecture $ARCH${NC}"
-            exit 1
-            ;;
-    esac
-}
-
 check_os() {
     OS=$(uname -s)
     if [ "$OS" != "Linux" ]; then
@@ -54,6 +35,22 @@ check_os() {
         echo -e "${YELLOW}For other platforms, download from: https://github.com/$REPO/releases${NC}"
         exit 1
     fi
+}
+
+check_arch() {
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64|amd64)
+            ARCH="x86_64"
+            ;;
+        aarch64|arm64)
+            ARCH="aarch64"
+            ;;
+        *)
+            echo -e "${RED}Error: Unsupported architecture $ARCH${NC}"
+            exit 1
+            ;;
+    esac
 }
 
 detect_distro() {
@@ -71,20 +68,51 @@ detect_distro() {
 check_dependencies() {
     echo -e "${BLUE}Checking dependencies...${NC}"
     
-    local missing=()
+    local missing_build=()
+    local missing_runtime=()
     
-    # Check for required libraries
+    # Check build dependencies
+    for cmd in curl git node npm rustc cargo; do
+        if ! command -v $cmd &> /dev/null; then
+            missing_build+=("$cmd")
+        fi
+    done
+    
+    if [ ${#missing_build[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Missing build tools: ${missing_build[*]}${NC}"
+        echo ""
+        
+        case $DISTRO in
+            arch)
+                echo -e "  ${GREEN}sudo pacman -S --needed curl git nodejs npm rust${NC}"
+                ;;
+            debian)
+                echo -e "  ${GREEN}sudo apt install curl git nodejs npm rustc cargo${NC}"
+                ;;
+            fedora)
+                echo -e "  ${GREEN}sudo dnf install curl git nodejs npm rust cargo${NC}"
+                ;;
+            *)
+                echo -e "  ${YELLOW}Please install: curl git node npm rust${NC}"
+                ;;
+        esac
+        echo ""
+        
+        read -p "Continue anyway? (y/N) " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+    
+    # Check runtime dependencies
     if ! ldconfig -p 2>/dev/null | grep -q libwebkit2gtk-4.1; then
-        missing+=("libwebkit2gtk-4.1")
+        missing_runtime+=("libwebkit2gtk-4.1")
     fi
     
-    if ! ldconfig -p 2>/dev/null | grep -q libgtk-3; then
-        missing+=("libgtk-3")
-    fi
-    
-    if [ ${#missing[@]} -gt 0 ]; then
-        echo -e "${YELLOW}Warning: Missing optional libraries: ${missing[*]}${NC}"
-        echo -e "${YELLOW}Install them with your package manager for full functionality${NC}"
+    if [ ${#missing_runtime[@]} -gt 0 ]; then
+        echo -e "${YELLOW}Warning: Missing runtime libraries: ${missing_runtime[*]}${NC}"
+        echo -e "${YELLOW}The app may not run without these.${NC}"
         echo ""
         
         case $DISTRO in
@@ -102,66 +130,40 @@ check_dependencies() {
     fi
 }
 
-download_and_install() {
-    local deb_url="https://github.com/$REPO/releases/download/$VERSION/pulse_${VERSION#v}_${DEB_ARCH}.deb"
-    
-    echo -e "${BLUE}Downloading Pulse $VERSION...${NC}"
+build_from_source() {
+    echo -e "${BLUE}Building Pulse from source...${NC}"
+    echo ""
     
     # Create temp directory
-    local tmp_dir=$(mktemp -d)
-    trap "rm -rf $tmp_dir" EXIT
+    local build_dir=$(mktemp -d)
+    trap "rm -rf $build_dir" EXIT
     
-    # Download deb package
-    curl -L -o "$tmp_dir/pulse.deb" "$deb_url" 2>/dev/null
+    # Clone repo
+    echo -e "${BLUE}Cloning repository...${NC}"
+    git clone --depth 1 "https://github.com/$REPO.git" "$build_dir/pulse"
+    cd "$build_dir/pulse"
     
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Error: Failed to download package${NC}"
-        echo -e "${YELLOW}Please download manually from: https://github.com/$REPO/releases${NC}"
+    # Install frontend dependencies
+    echo -e "${BLUE}Installing frontend dependencies...${NC}"
+    npm install
+    
+    # Build the app
+    echo -e "${BLUE}Building application...${NC}"
+    npm run tauri build
+    
+    # Find the built binary
+    local binary_path=$(find src-tauri/target/release -name "$BINARY_NAME" -type f ! -name "*.d" | head -1)
+    
+    if [ -z "$binary_path" ]; then
+        echo -e "${RED}Error: Build succeeded but could not find binary${NC}"
         exit 1
     fi
     
-    echo -e "${GREEN}Installing Pulse...${NC}"
-    
-    # Install based on distro
-    case $DISTRO in
-        arch)
-            # Arch can install debs with debtap or we can extract manually
-            echo -e "${YELLOW}Arch Linux detected. Extracting binary...${NC}"
-            mkdir -p "$INSTALL_DIR"
-            dpkg-deb -x "$tmp_dir/pulse.deb" "$tmp_dir/extracted" 2>/dev/null || {
-                # If dpkg-deb not available, try ar
-                cd "$tmp_dir"
-                ar x pulse.deb 2>/dev/null
-                tar xf data.tar.* 2>/dev/null
-                cd -
-            }
-            cp "$tmp_dir/extracted/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || \
-            cp "$tmp_dir/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || {
-                echo -e "${RED}Error: Could not extract binary${NC}"
-                exit 1
-            }
-            chmod +x "$INSTALL_DIR/$BINARY_NAME"
-            ;;
-        debian|fedora)
-            sudo dpkg -i "$tmp_dir/pulse.deb" 2>/dev/null || sudo apt-get install -f -y 2>/dev/null
-            ;;
-        *)
-            echo -e "${YELLOW}Unknown distro. Extracting binary manually...${NC}"
-            mkdir -p "$INSTALL_DIR"
-            dpkg-deb -x "$tmp_dir/pulse.deb" "$tmp_dir/extracted" 2>/dev/null || {
-                cd "$tmp_dir"
-                ar x pulse.deb 2>/dev/null
-                tar xf data.tar.* 2>/dev/null
-                cd -
-            }
-            cp "$tmp_dir/extracted/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || \
-            cp "$tmp_dir/usr/bin/pulse" "$INSTALL_DIR/$BINARY_NAME" 2>/dev/null || {
-                echo -e "${RED}Error: Could not extract binary${NC}"
-                exit 1
-            }
-            chmod +x "$INSTALL_DIR/$BINARY_NAME"
-            ;;
-    esac
+    # Install
+    echo -e "${BLUE}Installing to $INSTALL_DIR...${NC}"
+    mkdir -p "$INSTALL_DIR"
+    cp "$binary_path" "$INSTALL_DIR/$BINARY_NAME"
+    chmod +x "$INSTALL_DIR/$BINARY_NAME"
 }
 
 check_path() {
@@ -197,10 +199,12 @@ main() {
     check_arch
     detect_distro
     
-    echo -e "${GREEN}Latest version: $VERSION${NC}"
+    echo -e "${GREEN}Architecture: $ARCH${NC}"
+    echo -e "${GREEN}Distribution: $DISTRO${NC}"
     echo ""
     
-    download_and_install
+    check_dependencies
+    build_from_source
     
     echo ""
     echo -e "${GREEN}✓ Pulse installed successfully!${NC}"
