@@ -34,7 +34,23 @@ Thank you for your interest in contributing to Pulse! This document provides gui
 
 - [Rust](https://rustup.rs/) (latest stable)
 - [Node.js](https://nodejs.org/) (v18+)
-- [pnpm](https://pnpm.io/) or npm
+
+### System Dependencies
+
+#### Arch Linux
+```bash
+sudo pacman -S --needed base-devel curl wget file rust webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg libnotify openssl
+```
+
+#### Ubuntu/Debian
+```bash
+sudo apt install build-essential curl wget file libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+```
+
+#### Fedora
+```bash
+sudo dnf install curl wget file rust webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel
+```
 
 ### Clone and Setup
 
@@ -59,14 +75,8 @@ npm run tauri dev
 # Build for production
 npm run tauri build
 
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-
-# Format code
-npm run format
+# Preview frontend build
+npm run preview
 ```
 
 ## Project Structure
@@ -90,13 +100,13 @@ pulse/
 │   │   ├── CommandPalette.tsx
 │   │   ├── SearchBar.tsx
 │   │   └── Settings.tsx
-│   ├── hooks/           # React hooks
-│   ├── store/           # State management
+│   ├── store/           # State management (Zustand)
 │   ├── styles/          # CSS styles
 │   ├── themes/          # Theme definitions
 │   └── types/           # TypeScript types
 ├── docs/                # Documentation
-└── public/              # Static assets
+├── public/              # Static assets
+└── package.json         # Node dependencies
 ```
 
 ## Making Changes
@@ -129,13 +139,11 @@ refactor: improve PTY management
 
 #### TypeScript/React
 - Use TypeScript strict mode
-- Follow ESLint rules
 - Use functional components with hooks
 - Keep components small and focused
 
 #### CSS
 - Use CSS custom properties for theming
-- Follow BEM naming convention
 - Support both light and dark themes
 - Use modern CSS features
 
@@ -148,19 +156,12 @@ refactor: improve PTY management
 
 2. **Make your changes**
    - Write code
-   - Add tests if applicable
    - Update documentation
 
 3. **Test your changes**
    ```bash
    # Run locally
    npm run tauri dev
-   
-   # Run tests
-   npm test
-   
-   # Lint
-   npm run lint
    ```
 
 4. **Commit your changes**
@@ -195,8 +196,6 @@ Brief description of changes
 
 ## Testing
 - [ ] Tested locally
-- [ ] Tests pass
-- [ ] No console errors
 
 ## Checklist
 - [ ] Code follows project style
@@ -264,11 +263,6 @@ export function Terminal({ id, theme, onExit }: TerminalProps) {
 .tab-bar { }
 .tab-bar__tab { }
 .tab-bar__tab--active { }
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .tab-bar { }
-}
 ```
 
 ## Reporting Issues
@@ -294,15 +288,12 @@ Include:
 
 - **Themes** - Create new color schemes
 - **Documentation** - Improve guides and docs
-- **Tests** - Add test coverage
-- **Accessibility** - Improve screen reader support
 - **Performance** - Optimize rendering
 - **Features** - Implement roadmap items
 
 ## Getting Help
 
 - Open a Discussion on GitHub
-- Join our Discord (if available)
 - Read the [Documentation](docs/)
 
 ## License

@@ -9,6 +9,7 @@ pub struct PtyEvent {
     pub data: String,
 }
 
+#[allow(dead_code)]
 pub struct PtySession {
     pub id: String,
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,

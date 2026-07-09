@@ -2,7 +2,9 @@
 
 Pulse can be configured via the Settings UI or by editing the configuration file directly.
 
-## Configuration File
+> **Note:** The configuration file system is planned for a future release. Currently, settings are managed through the Settings UI and persisted via localStorage.
+
+## Configuration File (Planned)
 
 Location: `~/.config/pulse/config.toml`
 
@@ -311,82 +313,6 @@ env = {
 name = "catppuccin-mocha"
 ```
 
-## Full Configuration Example
-
-```toml
-# ~/.config/pulse/config.toml
-
-[window]
-opacity = 0.85
-blur_radius = 20
-border_radius = 12
-border_width = 1
-border_color = "#313244"
-shadow = true
-shadow_blur = 32
-shadow_opacity = 0.4
-width = 1400
-height = 900
-decorations = false
-center = true
-
-[font]
-family = "JetBrains Mono, Fira Code, monospace"
-size = 15
-weight = "normal"
-ligatures = true
-
-[glass]
-enabled = true
-blur_radius = 20
-noise_opacity = 0.02
-saturation = 180
-
-[cursor]
-style = "block"
-blinking = true
-blink_interval = 500
-
-[selection]
-copy_on_select = true
-
-[tab_bar]
-height = 36
-background = "#181825"
-
-[pane]
-border_width = 1
-border_color = "#313244"
-active_border_color = "#94e2d5"
-
-[animations]
-enabled = true
-duration = 200
-easing = "ease-out"
-
-[scrollback]
-lines = 50000
-
-[shell]
-executable = "/bin/zsh"
-args = ["--login"]
-
-[theme]
-name = "catppuccin-mocha"
-
-[keybindings]
-new_tab = "Ctrl+Shift+T"
-close_tab = "Ctrl+Shift+W"
-split_horizontal = "Ctrl+Shift+O"
-split_vertical = "Ctrl+Shift+E"
-close_pane = "Ctrl+Shift+X"
-copy = "Ctrl+Shift+C"
-paste = "Ctrl+Shift+V"
-search = "Ctrl+Shift+F"
-command_palette = "Ctrl+Shift+P"
-settings = "Ctrl+Shift+,"
-```
-
 ## Configuration Validation
 
 Pulse validates configuration on startup. If there are errors:
@@ -429,23 +355,11 @@ opacity = 0.9
 | Platform | Location |
 |----------|----------|
 | Linux | `~/.config/pulse/config.toml` |
-| macOS | `~/Library/Application Support/pulse/config.toml` |
-| Windows | `%APPDATA%\pulse\config.toml` |
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `PULSE_CONFIG_DIR` | Override config directory |
-| `PULSE_THEME` | Override theme |
 | `SHELL` | Default shell (fallback: `/bin/sh`) |
 | `TERM` | Terminal type |
 | `COLORTERM` | Color terminal support |
-
-## Config Reload
-
-Pulse supports hot-reloading configuration:
-
-1. Press `Ctrl+Shift+R` in Pulse
-2. Or edit the config file and save
-3. Changes apply immediately (except some window settings)

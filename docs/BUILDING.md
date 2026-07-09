@@ -32,28 +32,19 @@ npm --version
 
 #### Arch Linux
 ```bash
-sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file libappindicator-gtk3 librsvg libnotify openssl
+sudo pacman -S --needed base-devel curl wget file rust webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg libnotify openssl
 ```
 
 #### Ubuntu/Debian
 ```bash
 sudo apt update
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
+sudo apt install build-essential curl wget file libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
 ```
 
 #### Fedora
 ```bash
-sudo dnf install webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel
+sudo dnf install curl wget file rust webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel
 ```
-
-#### macOS
-```bash
-xcode-select --install
-```
-
-#### Windows
-- Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-- Install [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
 
 ## Clone Repository
 
@@ -101,22 +92,11 @@ This creates:
 - `src-tauri/target/release/bundle/deb/*.deb` - Debian package
 - `src-tauri/target/release/bundle/rpm/*.rpm` - Fedora package
 
-### Build Specific Target
-
-```bash
-# Release build
-cargo build --release
-
-# Debug build
-cargo build
-```
-
 ### Build Optimizations
 
-For smaller binaries:
+For smaller binaries, add to `src-tauri/Cargo.toml`:
 
-```bash
-# In Cargo.toml, ensure these settings
+```toml
 [profile.release]
 strip = true
 lto = true
@@ -139,12 +119,12 @@ pulse/
 │   └── tauri.conf.json  # Tauri config
 ├── src/                 # React frontend
 │   ├── components/      # UI components
-│   ├── hooks/           # React hooks
-│   ├── store/           # State management
+│   ├── store/           # State management (Zustand)
 │   ├── styles/          # CSS styles
 │   ├── themes/          # Theme definitions
 │   └── types/           # TypeScript types
 ├── public/              # Static assets
+├── docs/                # Documentation
 └── package.json         # Node dependencies
 ```
 
@@ -192,33 +172,6 @@ sudo apt install libwebkit2gtk-4.0-37
 
 #### "GLIBC version too old"
 Your system may be too old. Use a recent Linux distribution.
-
-## Cross-Compilation
-
-### Linux ARM64
-```bash
-# Install target
-rustup target add aarch64-unknown-linux-gnu
-
-# Install cross-compilation tools
-sudo apt install gcc-aarch64-linux-gnu
-
-# Build
-cargo build --release --target aarch64-unknown-linux-gnu
-```
-
-### macOS Universal
-```bash
-# Build for both architectures
-cargo build --release --target aarch64-apple-darwin
-cargo build --release --target x86_64-apple-darwin
-
-# Create universal binary
-lipo -create \
-  target/aarch64-apple-darwin/release/pulse \
-  target/x86_64-apple-darwin/release/pulse \
-  -output pulse-universal
-```
 
 ## CI/CD
 

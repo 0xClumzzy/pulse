@@ -118,8 +118,8 @@ fn pty_list(state: State<'_, PtyManager>) -> Vec<String> {
 #[tauri::command]
 fn get_config_path() -> String {
     dirs::config_dir()
-        .map(|p| p.join("glassterm").to_string_lossy().to_string())
-        .unwrap_or_else(|| "~/.config/glassterm".to_string())
+        .map(|p| p.join("pulse").to_string_lossy().to_string())
+        .unwrap_or_else(|| "~/.config/pulse".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -136,5 +136,5 @@ pub fn run() {
             get_config_path,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running GlassTerm");
+        .expect("error while running Pulse");
 }

@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.1.0] - 2025-07-09
+## [0.1.0] - 2026-07-09
 
 ### Added
 
@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.1.0 | 2025-07-09 | Initial release |
+| 0.1.0 | 2026-07-09 | Initial release |
 
 ---
 
@@ -119,7 +119,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### 0.3.0 (Planned)
 - Windows Terminal import
-- macOS native tabs
 - More built-in themes
 - Theme marketplace
 

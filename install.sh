@@ -84,7 +84,7 @@ check_dependencies() {
         
         case $DISTRO in
             arch)
-                echo -e "  ${GREEN}sudo pacman -S --needed curl git nodejs npm rust${NC}"
+                echo -e "  ${GREEN}sudo pacman -S --needed curl git nodejs npm rust base-devel wget file${NC}"
                 ;;
             debian)
                 echo -e "  ${GREEN}sudo apt install curl git nodejs npm rustc cargo${NC}"
@@ -117,7 +117,7 @@ check_dependencies() {
         
         case $DISTRO in
             arch)
-                echo -e "  ${GREEN}sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator3 librsvg openssl${NC}"
+                echo -e "  ${GREEN}sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg openssl${NC}"
                 ;;
             debian)
                 echo -e "  ${GREEN}sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 librsvg2-0 libssl3${NC}"
@@ -147,12 +147,15 @@ build_from_source() {
     echo -e "${BLUE}Installing frontend dependencies...${NC}"
     npm install
     
+    # Remove appimage from bundle targets (requires linuxdeploy)
+    sed -i 's/"targets": \["deb", "rpm", "appimage"\]/"targets": ["deb", "rpm"]/' src-tauri/tauri.conf.json
+
     # Build the app
     echo -e "${BLUE}Building application...${NC}"
-    npm run tauri build
+    npm run tauri build -- --bundles deb,rpm
     
-    # Find the built binary
-    local binary_path=$(find src-tauri/target/release -name "$BINARY_NAME" -type f ! -name "*.d" | head -1)
+    # Find the built binary (only in release dir, not in bundle subdirs)
+    local binary_path=$(find src-tauri/target/release -maxdepth 1 -name "$BINARY_NAME" -type f ! -name "*.d" | head -1)
     
     if [ -z "$binary_path" ]; then
         echo -e "${RED}Error: Build succeeded but could not find binary${NC}"

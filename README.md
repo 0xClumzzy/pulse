@@ -63,45 +63,54 @@
 └──────────────┴──────────────────────────────────────────┘
 ```
 
-## Quick Start
+## Installation
 
-### Quick Install (curl)
+### Arch Linux
 
 ```bash
+# Install dependencies
+sudo pacman -S --needed curl git nodejs npm rust base-devel wget file webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg openssl
+
+# Install Pulse
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 ```
 
-### Debian/Ubuntu (.deb)
+### Debian / Ubuntu
 
 ```bash
-# Download the latest .deb from Releases
+# Install dependencies
+sudo apt install curl git nodejs npm rustc cargo build-essential libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev
+
+# Option 1: Install script
+curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
+
+# Option 2: .deb package
+wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse_0.1.0_amd64.deb
 sudo dpkg -i pulse_0.1.0_amd64.deb
 ```
 
-### Fedora/RHEL (.rpm)
+### Fedora / RHEL
 
 ```bash
-# Download the latest .rpm from Releases
+# Install dependencies
+sudo dnf install curl git nodejs npm rust cargo webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel
+
+# Option 1: Install script
+curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
+
+# Option 2: .rpm package
+wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-0.1.0-1.x86_64.rpm
 sudo rpm -i pulse-0.1.0-1.x86_64.rpm
 ```
 
-### Build from Source
+### Other Distros
 
-See [docs/BUILDING.md](docs/BUILDING.md) for detailed instructions.
+Build from source. See [docs/BUILDING.md](docs/BUILDING.md) for details.
+
+### Uninstall
 
 ```bash
-# Clone
-git clone https://github.com/0xClumzzy/pulse.git
-cd pulse
-
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run tauri dev
-
-# Build for production
-npm run tauri build
+rm ~/.local/bin/pulse
 ```
 
 ## Documentation
@@ -177,8 +186,6 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 - [ ] Session persistence
 - [ ] Custom shaders
 - [ ] Plugin system
-- [ ] Windows Terminal imports
-- [ ] macOS native tabs
 
 ## License
 
@@ -188,4 +195,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - Inspired by [Terminator](https://gnome-terminator.org/), [Alacritty](https://alacritty.org/), and [WezTerm](https://wezfurlong.org/wezterm/)
 - Theme colors from [Catppuccin](https://catppuccin.com/)
-- Glass effects inspired by macOS Tahoe
