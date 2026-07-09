@@ -1,8 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import Terminal from './Terminal';
-import { useTerminalStore } from '../store/terminal';
 import { SearchAddon } from '@xterm/addon-search';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface PaneData {
   id: string;
@@ -23,13 +21,15 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
   const [splitPosition, setSplitPosition] = useState(50);
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const directionRef = useRef(pane.direction);
+  directionRef.current = pane.direction;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDragging.current = true;
-    document.body.style.cursor = pane.direction === 'horizontal' ? 'col-resize' : 'row-resize';
+    document.body.style.cursor = directionRef.current === 'horizontal' ? 'col-resize' : 'row-resize';
     document.body.style.userSelect = 'none';
-  }, [pane.direction]);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -38,7 +38,7 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
       const rect = containerRef.current.getBoundingClientRect();
       let position: number;
 
-      if (pane.direction === 'horizontal') {
+      if (directionRef.current === 'horizontal') {
         position = ((e.clientX - rect.left) / rect.width) * 100;
       } else {
         position = ((e.clientY - rect.top) / rect.height) * 100;
@@ -60,7 +60,7 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [pane.direction]);
+  }, []);
 
   if (!pane.children || pane.children.length < 2) {
     return (
@@ -117,3 +117,5 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
     </div>
   );
 }
+
+export default memo(SplitPane);

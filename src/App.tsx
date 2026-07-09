@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { TabBar } from './components/TabBar';
-import { SplitPane } from './components/SplitPane';
+import SplitPane from './components/SplitPane';
 import { SearchBar } from './components/SearchBar';
 import { CommandPalette } from './components/CommandPalette';
 import { Settings } from './components/Settings';

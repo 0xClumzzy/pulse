@@ -84,26 +84,28 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   splitPane: (paneId, direction) => {
     set((state) => {
-      const tab = state.tabs.find((t) => t.id === state.activeTabId);
-      if (!tab) return state;
+      const tabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
+      if (tabIndex === -1) return state;
+
+      const tab = state.tabs[tabIndex];
+      const paneIndex = tab.panes.findIndex((p) => p.id === paneId);
+      if (paneIndex === -1) return state;
 
       const newPane = createPane();
-      const updatedPanes = tab.panes.map((p) => {
-        if (p.id === paneId) {
-          return {
-            ...p,
-            direction,
-            children: [p, newPane],
-            size: 50,
-          };
-        }
-        return p;
-      });
+      const oldPane = tab.panes[paneIndex];
+      const newPanes = [...tab.panes];
+      newPanes[paneIndex] = {
+        ...oldPane,
+        direction,
+        children: [oldPane, newPane],
+        size: 50,
+      };
+
+      const newTabs = [...state.tabs];
+      newTabs[tabIndex] = { ...tab, panes: newPanes };
 
       return {
-        tabs: state.tabs.map((t) =>
-          t.id === state.activeTabId ? { ...t, panes: updatedPanes } : t
-        ),
+        tabs: newTabs,
         activePaneId: newPane.id,
       };
     });
@@ -111,18 +113,22 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   closePane: (paneId) => {
     set((state) => {
-      const tab = state.tabs.find((t) => t.id === state.activeTabId);
-      if (!tab || tab.panes.length <= 1) {
+      const tabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
+      if (tabIndex === -1) return state;
+
+      const tab = state.tabs[tabIndex];
+      if (tab.panes.length <= 1) {
         get().closeTab(state.activeTabId);
         return state;
       }
 
-      const updatedPanes = tab.panes.filter((p) => p.id !== paneId);
+      const newPanes = tab.panes.filter((p) => p.id !== paneId);
+      const newTabs = [...state.tabs];
+      newTabs[tabIndex] = { ...tab, panes: newPanes };
+
       return {
-        tabs: state.tabs.map((t) =>
-          t.id === state.activeTabId ? { ...t, panes: updatedPanes } : t
-        ),
-        activePaneId: updatedPanes[0]?.id || state.activePaneId,
+        tabs: newTabs,
+        activePaneId: newPanes[0]?.id || state.activePaneId,
       };
     });
   },
