@@ -232,6 +232,24 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     return unsub;
   }, []);
 
+  // Auto-focus when becomes active
+  useEffect(() => {
+    if (isFocused && termRef.current) {
+      termRef.current.focus();
+    }
+  }, [isFocused]);
+
+  // Re-focus after settings or other panels close
+  useEffect(() => {
+    const handle = () => {
+      if (termRef.current) {
+        setTimeout(() => termRef.current?.focus(), 50);
+      }
+    };
+    window.addEventListener('mouseup', handle);
+    return () => window.removeEventListener('mouseup', handle);
+  }, []);
+
   return (
     <div
       ref={containerRef}
