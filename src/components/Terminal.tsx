@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { Terminal as XTerminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { FitAddon } from '@xterm/addon-fit';
@@ -20,14 +20,25 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const termRef = useRef<XTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const ptyIdRef = useRef<string | null>(null);
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const theme = useTerminalStore((s) => s.theme);
+  const themeRef = useRef(useTerminalStore.getState().theme);
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
   const updateTabTitle = useTerminalStore((s) => s.updateTabTitle);
-  const activeTabId = useTerminalStore((s) => s.activeTabId);
+  const activeTabIdRef = useRef(useTerminalStore.getState().activeTabId);
 
-  const createTerminal = useCallback(async () => {
+  // Subscribe to store changes without re-creating terminal
+  useEffect(() => {
+    const unsub = useTerminalStore.subscribe((state) => {
+      activeTabIdRef.current = state.activeTabId;
+    });
+    return unsub;
+  }, []);
+
+  // Create terminal once on mount
+  useEffect(() => {
     if (!containerRef.current) return;
+    const theme = themeRef.current;
 
     const term = new XTerminal({
       fontFamily: theme.font.family,
@@ -63,6 +74,8 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       cursorOpacity: theme.cursor.opacity,
       scrollback: 10000,
       allowProposedApi: true,
+      drawBoldTextInBrightColors: true,
+      minimumContrastRatio: 1,
     });
 
     const fitAddon = new FitAddon();
@@ -77,12 +90,11 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     term.open(containerRef.current);
 
-    // Handle copy/paste and other keybindings
+    // Handle copy/paste
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;
 
-      // Ctrl+Shift+C: Copy selection
       if (isCtrl && isShift && e.key === 'C') {
         if (e.type === 'keydown') {
           const selection = term.getSelection();
@@ -93,7 +105,6 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
         return true;
       }
 
-      // Ctrl+Shift+V: Paste
       if (isCtrl && isShift && e.key === 'V') {
         if (e.type === 'keydown') {
           navigator.clipboard.readText().then((text) => {
@@ -108,6 +119,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       return true;
     });
 
+    // WebGL with fallback
     try {
       const webglAddon = new WebglAddon();
       webglAddon.onContextLoss(() => {
@@ -123,44 +135,40 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     termRef.current = term;
 
     // Spawn PTY
-    try {
-      const ptyId = await invoke<string>('pty_spawn', {});
+    invoke<string>('pty_spawn', {}).then((ptyId) => {
       ptyIdRef.current = ptyId;
       updatePanePty(paneId, ptyId);
 
-      // Listen for PTY data
-      const unlistenData = await listen<{ id: string; data: string }>(
-        'pty-data',
-        (event) => {
-          if (event.payload.id === ptyId) {
-            term.write(event.payload.data);
-          }
+      listen<{ id: string; data: string }>('pty-data', (event) => {
+        if (event.payload.id === ptyId) {
+          term.write(event.payload.data);
         }
-      );
+      });
 
-      // Listen for PTY exit
-      const unlistenExit = await listen<string>('pty-exit', (event) => {
+      listen<string>('pty-exit', (event) => {
         if (event.payload === ptyId) {
           term.write('\r\n\x1b[33m[Process exited]\x1b[0m\r\n');
         }
       });
+    });
 
-      // Handle user input
-      term.onData(async (data) => {
-        if (ptyIdRef.current) {
-          await invoke('pty_write', { id: ptyIdRef.current, data });
-        }
-      });
+    term.onData((data) => {
+      if (ptyIdRef.current) {
+        invoke('pty_write', { id: ptyIdRef.current, data });
+      }
+    });
 
-      // Handle title changes
-      term.onTitleChange((title) => {
-        if (activeTabId) {
-          updateTabTitle(activeTabId, title || 'Shell');
-        }
-      });
+    term.onTitleChange((title) => {
+      const tabId = activeTabIdRef.current;
+      if (tabId) {
+        updateTabTitle(tabId, title || 'Shell');
+      }
+    });
 
-      // Handle resize
-      const resizeObserver = new ResizeObserver(() => {
+    // Debounced resize
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      resizeTimerRef.current = setTimeout(() => {
         fitAddon.fit();
         if (ptyIdRef.current) {
           const dims = fitAddon.proposeDimensions();
@@ -172,43 +180,27 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
             });
           }
         }
-      });
-      resizeObserver.observe(containerRef.current);
-
-      return () => {
-        unlistenData();
-        unlistenExit();
-        resizeObserver.disconnect();
-        if (ptyIdRef.current) {
-          invoke('pty_close', { id: ptyIdRef.current });
-        }
-      };
-    } catch (e) {
-      console.error('Failed to spawn PTY:', e);
-      term.write('\x1b[31mFailed to start terminal\x1b[0m\r\n');
-      return () => {};
-    }
-  }, [theme, paneId, updatePanePty, updateTabTitle, activeTabId, searchAddon]);
-
-  useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
-    createTerminal().then((cleanupFn) => {
-      cleanup = cleanupFn;
+      }, 50);
     });
+    resizeObserver.observe(containerRef.current);
 
     return () => {
-      if (cleanup) cleanup();
-      if (termRef.current) {
-        termRef.current.dispose();
+      resizeObserver.disconnect();
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      if (ptyIdRef.current) {
+        invoke('pty_close', { id: ptyIdRef.current });
       }
+      term.dispose();
     };
-  }, [createTerminal]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update theme when it changes
+  // Update theme without recreating terminal
   useEffect(() => {
-    if (termRef.current) {
-      termRef.current.options.theme = {
+    const unsub = useTerminalStore.subscribe((state) => {
+      const t = termRef.current;
+      if (!t) return;
+      const theme = state.theme;
+      t.options.theme = {
         background: theme.background,
         foreground: theme.foreground,
         cursor: theme.cursor.cursor,
@@ -232,16 +224,13 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
         brightCyan: theme.palette.brightCyan,
         brightWhite: theme.palette.brightWhite,
       };
-      termRef.current.options.fontFamily = theme.font.family;
-      termRef.current.options.fontSize = theme.font.size;
-      termRef.current.options.cursorBlink = theme.cursor.blinking;
-      termRef.current.options.cursorStyle = theme.cursor.style;
-
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-      }
-    }
-  }, [theme]);
+      t.options.fontFamily = theme.font.family;
+      t.options.fontSize = theme.font.size;
+      t.options.cursorBlink = theme.cursor.blinking;
+      t.options.cursorStyle = theme.cursor.style;
+    });
+    return unsub;
+  }, []);
 
   return (
     <div

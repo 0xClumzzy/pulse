@@ -14,17 +14,6 @@ function App() {
   const tabs = useTerminalStore((s) => s.tabs);
   const activeTabId = useTerminalStore((s) => s.activeTabId);
   const activePaneId = useTerminalStore((s) => s.activePaneId);
-  const setActivePane = useTerminalStore((s) => s.setActivePane);
-  const addTab = useTerminalStore((s) => s.addTab);
-  const closeTab = useTerminalStore((s) => s.closeTab);
-  const closePane = useTerminalStore((s) => s.closePane);
-  const splitPane = useTerminalStore((s) => s.splitPane);
-  const movePane = useTerminalStore((s) => s.movePane);
-  const toggleSettings = useTerminalStore((s) => s.toggleSettings);
-  const toggleCommandPalette = useTerminalStore((s) => s.toggleCommandPalette);
-  const toggleSearch = useTerminalStore((s) => s.toggleSearch);
-  const tabsState = useTerminalStore((s) => s.tabs);
-  const theme = useTerminalStore((s) => s.theme);
 
   const searchAddon = useRef<SearchAddon | null>(null);
 
@@ -32,6 +21,7 @@ function App() {
   const activePane = activeTab?.panes[0];
 
   // Apply theme CSS variables
+  const theme = useTerminalStore((s) => s.theme);
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--bg', theme.background);
@@ -45,107 +35,88 @@ function App() {
     root.style.setProperty('--font-mono', theme.font.family);
   }, [theme]);
 
-  // Keyboard shortcuts
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      const isCtrl = e.ctrlKey || e.metaKey;
-      const isShift = e.shiftKey;
-      const isAlt = e.altKey;
+  // Keyboard shortcuts - use refs to avoid re-creating handler
+  const activeTabIdRef = useRef(activeTabId);
+  const activePaneIdRef = useRef(activePaneId);
+  const tabsRef = useRef(tabs);
+  activeTabIdRef.current = activeTabId;
+  activePaneIdRef.current = activePaneId;
+  tabsRef.current = tabs;
 
-      // Ctrl+Shift+T: New Tab
-      if (isCtrl && isShift && e.key === 'T') {
-        e.preventDefault();
-        addTab();
-      }
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isShift = e.shiftKey;
+    const isAlt = e.altKey;
 
-      // Ctrl+Shift+W: Close Tab
-      if (isCtrl && isShift && e.key === 'W') {
-        e.preventDefault();
-        closeTab(activeTabId);
-      }
+    if (isCtrl && isShift && e.key === 'T') {
+      e.preventDefault();
+      useTerminalStore.getState().addTab();
+    }
 
-      // Ctrl+Shift+E: Split Vertically
-      if (isCtrl && isShift && e.key === 'E') {
-        e.preventDefault();
-        splitPane(activePaneId, 'vertical');
-      }
+    if (isCtrl && isShift && e.key === 'W') {
+      e.preventDefault();
+      useTerminalStore.getState().closeTab(activeTabIdRef.current);
+    }
 
-      // Ctrl+Shift+O: Split Horizontally
-      if (isCtrl && isShift && e.key === 'O') {
-        e.preventDefault();
-        splitPane(activePaneId, 'horizontal');
-      }
+    if (isCtrl && isShift && e.key === 'E') {
+      e.preventDefault();
+      useTerminalStore.getState().splitPane(activePaneIdRef.current, 'vertical');
+    }
 
-      // Ctrl+Shift+X: Close Pane
-      if (isCtrl && isShift && e.key === 'X') {
-        e.preventDefault();
-        closePane(activePaneId);
-      }
+    if (isCtrl && isShift && e.key === 'O') {
+      e.preventDefault();
+      useTerminalStore.getState().splitPane(activePaneIdRef.current, 'horizontal');
+    }
 
-      // Ctrl+Shift+Arrow: Move between panes
-      if (isCtrl && isShift) {
-        if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          movePane('left');
-        }
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          movePane('right');
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          movePane('up');
-        }
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          movePane('down');
-        }
-      }
+    if (isCtrl && isShift && e.key === 'X') {
+      e.preventDefault();
+      useTerminalStore.getState().closePane(activePaneIdRef.current);
+    }
 
-      // Ctrl+Shift+P: Command Palette
-      if (isCtrl && isShift && e.key === 'P') {
-        e.preventDefault();
-        toggleCommandPalette();
-      }
+    if (isCtrl && isShift) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); useTerminalStore.getState().movePane('left'); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); useTerminalStore.getState().movePane('right'); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); useTerminalStore.getState().movePane('up'); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); useTerminalStore.getState().movePane('down'); }
+    }
 
-      // Ctrl+Shift+F: Search
-      if (isCtrl && isShift && e.key === 'F') {
-        e.preventDefault();
-        toggleSearch();
-      }
+    if (isCtrl && isShift && e.key === 'P') {
+      e.preventDefault();
+      useTerminalStore.getState().toggleCommandPalette();
+    }
 
-      // Ctrl+Shift+,: Settings
-      if (isCtrl && isShift && e.key === ',') {
-        e.preventDefault();
-        toggleSettings();
-      }
+    if (isCtrl && isShift && e.key === 'F') {
+      e.preventDefault();
+      useTerminalStore.getState().toggleSearch();
+    }
 
-      // Ctrl+PageDown/Up: Tab navigation
-      if (isCtrl && e.key === 'PageDown') {
-        e.preventDefault();
-        const currentIndex = tabsState.findIndex((t) => t.id === activeTabId);
-        const nextIndex = (currentIndex + 1) % tabsState.length;
-        useTerminalStore.getState().setActiveTab(tabsState[nextIndex].id);
-      }
+    if (isCtrl && isShift && e.key === ',') {
+      e.preventDefault();
+      useTerminalStore.getState().toggleSettings();
+    }
 
-      if (isCtrl && e.key === 'PageUp') {
-        e.preventDefault();
-        const currentIndex = tabsState.findIndex((t) => t.id === activeTabId);
-        const prevIndex = (currentIndex - 1 + tabsState.length) % tabsState.length;
-        useTerminalStore.getState().setActiveTab(tabsState[prevIndex].id);
-      }
+    if (isCtrl && e.key === 'PageDown') {
+      e.preventDefault();
+      const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
+      const next = (current + 1) % tabsRef.current.length;
+      useTerminalStore.getState().setActiveTab(tabsRef.current[next].id);
+    }
 
-      // Ctrl+Alt+1-9: Go to tab
-      if (isCtrl && isAlt && e.key >= '1' && e.key <= '9') {
-        e.preventDefault();
-        const index = parseInt(e.key) - 1;
-        if (tabsState[index]) {
-          useTerminalStore.getState().setActiveTab(tabsState[index].id);
-        }
+    if (isCtrl && e.key === 'PageUp') {
+      e.preventDefault();
+      const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
+      const prev = (current - 1 + tabsRef.current.length) % tabsRef.current.length;
+      useTerminalStore.getState().setActiveTab(tabsRef.current[prev].id);
+    }
+
+    if (isCtrl && isAlt && e.key >= '1' && e.key <= '9') {
+      e.preventDefault();
+      const index = parseInt(e.key) - 1;
+      if (tabsRef.current[index]) {
+        useTerminalStore.getState().setActiveTab(tabsRef.current[index].id);
       }
-    },
-    [activeTabId, activePaneId, addTab, closeTab, closePane, splitPane, movePane, toggleSettings, toggleCommandPalette, toggleSearch, tabsState]
-  );
+    }
+  }, []);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -166,7 +137,7 @@ function App() {
           <SplitPane
             pane={activePane}
             isFocused={true}
-            onFocus={setActivePane}
+            onFocus={(id) => useTerminalStore.getState().setActivePane(id)}
             searchAddon={searchAddon}
           />
         )}
