@@ -1237,23 +1237,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "glassterm"
-version = "0.1.0"
-dependencies = [
- "dirs 5.0.1",
- "log",
- "portable-pty",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-log",
- "tokio",
- "toml 0.8.2",
- "uuid",
-]
-
-[[package]]
 name = "glib"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2564,6 +2547,23 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "pulse"
+version = "0.1.0"
+dependencies = [
+ "dirs 5.0.1",
+ "log",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-log",
+ "tokio",
+ "toml 0.8.2",
+ "uuid",
 ]
 
 [[package]]

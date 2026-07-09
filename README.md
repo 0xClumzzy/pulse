@@ -65,20 +65,26 @@
 
 ## Quick Start
 
-### Install from Package
+### Quick Install (curl)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
+```
+
+### Package Managers
 
 #### Arch Linux (AUR)
 ```bash
-yay -S pulse-terminal
+yay -S pulse
 ```
 
-#### Debian/Ubuntu
+#### Debian/Ubuntu (.deb)
 ```bash
 # Download the latest .deb from Releases
 sudo dpkg -i pulse_0.1.0_amd64.deb
 ```
 
-#### Fedora/RHEL
+#### Fedora/RHEL (.rpm)
 ```bash
 # Download the latest .rpm from Releases
 sudo rpm -i pulse-0.1.0-1.x86_64.rpm
