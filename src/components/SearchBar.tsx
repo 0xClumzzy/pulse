@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTerminalStore } from '../store/terminal';
-import { motion, AnimatePresence } from 'framer-motion';
+import { SearchAddon } from '@xterm/addon-search';
 
 interface SearchBarProps {
-  searchAddon: React.MutableRefObject<any | null>;
+  searchAddon: React.MutableRefObject<SearchAddon | null>;
 }
 
 export function SearchBar({ searchAddon }: SearchBarProps) {
   const searchOpen = useTerminalStore((s) => s.searchOpen);
   const toggleSearch = useTerminalStore((s) => s.toggleSearch);
+  const activePaneId = useTerminalStore((s) => s.activePaneId);
   const [query, setQuery] = useState('');
   const [matchCount, setMatchCount] = useState(0);
   const [currentMatch, setCurrentMatch] = useState(0);
@@ -19,6 +20,26 @@ export function SearchBar({ searchAddon }: SearchBarProps) {
       inputRef.current.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen || !searchAddon.current) {
+      setMatchCount(0);
+      setCurrentMatch(0);
+      return;
+    }
+
+    const addon = searchAddon.current;
+    addon.clearDecorations();
+
+    const disposable = addon.onDidChangeResults((e: { resultIndex: number; resultCount: number }) => {
+      setCurrentMatch(e.resultCount > 0 ? e.resultIndex + 1 : 0);
+      setMatchCount(e.resultCount);
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [searchOpen, searchAddon.current, activePaneId]);
 
   const handleSearch = (direction: 'next' | 'prev') => {
     if (!searchAddon.current || !query) return;
@@ -40,62 +61,60 @@ export function SearchBar({ searchAddon }: SearchBarProps) {
     toggleSearch();
   };
 
+  if (!searchOpen) return null;
+
   return (
-    <AnimatePresence>
-      {searchOpen && (
-        <motion.div
-          className="search-bar"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.15 }}
-        >
-          <input
-            ref={inputRef}
-            className="search-input"
-            type="text"
-            placeholder="Search..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (searchAddon.current && e.target.value) {
-                searchAddon.current.findNext(e.target.value);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch(e.shiftKey ? 'prev' : 'next');
-              } else if (e.key === 'Escape') {
-                handleClose();
-              }
-            }}
-          />
-          <span className="search-count">
-            {query ? `${currentMatch}/${matchCount}` : 'No results'}
-          </span>
-          <button
-            className="search-btn"
-            onClick={() => handleSearch('prev')}
-            title="Previous (Shift+Enter)"
-          >
-            ↑
-          </button>
-          <button
-            className="search-btn"
-            onClick={() => handleSearch('next')}
-            title="Next (Enter)"
-          >
-            ↓
-          </button>
-          <button
-            className="search-btn"
-            onClick={handleClose}
-            title="Close (Escape)"
-          >
-            ×
-          </button>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="search-bar">
+      <input
+        ref={inputRef}
+        className="search-input"
+        type="text"
+        placeholder="Search..."
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (searchAddon.current) {
+            if (e.target.value) {
+              searchAddon.current.findNext(e.target.value);
+            } else {
+              searchAddon.current.clearDecorations();
+              setMatchCount(0);
+              setCurrentMatch(0);
+            }
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            handleSearch(e.shiftKey ? 'prev' : 'next');
+          } else if (e.key === 'Escape') {
+            handleClose();
+          }
+        }}
+      />
+      <span className="search-count">
+        {query ? `${currentMatch}/${matchCount}` : 'No results'}
+      </span>
+      <button
+        className="search-btn"
+        onClick={() => handleSearch('prev')}
+        title="Previous (Shift+Enter)"
+      >
+        ↑
+      </button>
+      <button
+        className="search-btn"
+        onClick={() => handleSearch('next')}
+        title="Next (Enter)"
+      >
+        ↓
+      </button>
+      <button
+        className="search-btn"
+        onClick={handleClose}
+        title="Close (Escape)"
+      >
+        ×
+      </button>
+    </div>
   );
 }

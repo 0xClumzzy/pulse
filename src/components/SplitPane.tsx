@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import Terminal from './Terminal';
 import { SearchAddon } from '@xterm/addon-search';
+import { useTerminalStore } from '../store/terminal';
 
 interface PaneData {
   id: string;
@@ -22,6 +23,7 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
   const isDragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const directionRef = useRef(pane.direction);
+  const activePaneId = useTerminalStore((s) => s.activePaneId);
   directionRef.current = pane.direction;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -62,12 +64,14 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
     };
   }, []);
 
+  const isActive = isFocused && pane.id === activePaneId;
+
   if (!pane.children || pane.children.length < 2) {
     return (
-      <div className={`pane ${isFocused ? 'focused' : ''}`} style={{ width: '100%', height: '100%' }}>
+      <div className={`pane ${isActive ? 'focused' : ''}`} style={{ width: '100%', height: '100%' }}>
         <Terminal
           paneId={pane.id}
-          isFocused={isFocused}
+          isFocused={isActive}
           onFocus={() => onFocus(pane.id)}
           searchAddon={searchAddon}
         />
@@ -77,6 +81,13 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
 
   const [first, second] = pane.children;
   const isHorizontal = pane.direction === 'horizontal';
+
+  // Check which child contains the active pane (recursively)
+  const containsActivePane = (p: PaneData): boolean => {
+    if (p.id === activePaneId) return true;
+    if (p.children) return p.children.some(containsActivePane);
+    return false;
+  };
 
   return (
     <div
@@ -92,7 +103,7 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
       >
         <SplitPane
           pane={first}
-          isFocused={isFocused && first.id === pane.id}
+          isFocused={isFocused && containsActivePane(first)}
           onFocus={onFocus}
           searchAddon={searchAddon}
         />
@@ -109,7 +120,7 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
       >
         <SplitPane
           pane={second}
-          isFocused={isFocused && second.id === pane.id}
+          isFocused={isFocused && containsActivePane(second)}
           onFocus={onFocus}
           searchAddon={searchAddon}
         />

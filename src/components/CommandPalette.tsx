@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTerminalStore } from '../store/terminal';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface Command {
   id: string;
@@ -31,10 +30,10 @@ export function CommandPalette() {
       { id: 'split-h', label: 'Split Horizontally', shortcut: 'Ctrl+Shift+O', action: () => { splitPane(activePaneId, 'horizontal'); toggleCommandPalette(); } },
       { id: 'split-v', label: 'Split Vertically', shortcut: 'Ctrl+Shift+E', action: () => { splitPane(activePaneId, 'vertical'); toggleCommandPalette(); } },
       { id: 'settings', label: 'Open Settings', shortcut: 'Ctrl+Shift+,', action: () => { toggleSettings(); toggleCommandPalette(); } },
-      { id: 'search', label: 'Search in Scrollback', shortcut: 'Ctrl+Shift+F', action: () => { toggleCommandPalette(); } },
-      { id: 'zoom-in', label: 'Zoom In', shortcut: 'Ctrl++', action: () => { toggleCommandPalette(); } },
-      { id: 'zoom-out', label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => { toggleCommandPalette(); } },
-      { id: 'zoom-reset', label: 'Reset Zoom', shortcut: 'Ctrl+0', action: () => { toggleCommandPalette(); } },
+      { id: 'search', label: 'Search in Scrollback', shortcut: 'Ctrl+Shift+F', action: () => { toggleCommandPalette(); useTerminalStore.getState().toggleSearch(); } },
+      { id: 'zoom-in', label: 'Zoom In', shortcut: 'Ctrl++', action: () => { useTerminalStore.getState().zoomIn(); toggleCommandPalette(); } },
+      { id: 'zoom-out', label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => { useTerminalStore.getState().zoomOut(); toggleCommandPalette(); } },
+      { id: 'zoom-reset', label: 'Reset Zoom', shortcut: 'Ctrl+0', action: () => { useTerminalStore.getState().zoomReset(); toggleCommandPalette(); } },
       ...tabs.map((tab) => ({
         id: `goto-${tab.id}`,
         label: `Go to ${tab.title}`,
@@ -90,63 +89,54 @@ export function CommandPalette() {
     }
   };
 
+  if (!commandPaletteOpen) return null;
+
   return (
-    <AnimatePresence>
-      {commandPaletteOpen && (
-        <>
-          <motion.div
-            className="command-palette-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={toggleCommandPalette}
-          />
-          <motion.div
-            className="command-palette"
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.15 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              ref={inputRef}
-              className="command-palette-input"
-              type="text"
-              placeholder="Type a command..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <div className="command-palette-list">
-              {filteredCommands.map((cmd, index) => (
-                <div
-                  key={cmd.id}
-                  className={`command-item ${index === selectedIndex ? 'selected' : ''}`}
-                  onClick={cmd.action}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  <span className="command-item-label">{cmd.label}</span>
-                  {cmd.shortcut && (
-                    <span className="command-item-shortcut">
-                      {cmd.shortcut.split('+').map((key, i) => (
-                        <kbd key={i}>{key}</kbd>
-                      ))}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {filteredCommands.length === 0 && (
-                <div className="command-item">
-                  <span className="command-item-label" style={{ opacity: 0.5 }}>
-                    No matching commands
-                  </span>
-                </div>
+    <>
+      <div
+        className="command-palette-overlay"
+        onClick={toggleCommandPalette}
+      />
+      <div
+        className="command-palette"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          ref={inputRef}
+          className="command-palette-input"
+          type="text"
+          placeholder="Type a command..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <div className="command-palette-list">
+          {filteredCommands.map((cmd, index) => (
+            <div
+              key={cmd.id}
+              className={`command-item ${index === selectedIndex ? 'selected' : ''}`}
+              onClick={cmd.action}
+              onMouseEnter={() => setSelectedIndex(index)}
+            >
+              <span className="command-item-label">{cmd.label}</span>
+              {cmd.shortcut && (
+                <span className="command-item-shortcut">
+                  {cmd.shortcut.split('+').map((key, i) => (
+                    <kbd key={i}>{key}</kbd>
+                  ))}
+                </span>
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          ))}
+          {filteredCommands.length === 0 && (
+            <div className="command-item">
+              <span className="command-item-label" style={{ opacity: 0.5 }}>
+                No matching commands
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

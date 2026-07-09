@@ -44,7 +44,7 @@ export const catppuccinMocha: Theme = {
     foreground: '#cdd6f4',
   },
   window: {
-    opacity: 0.9,
+    opacity: 0.95,
     blurRadius: 24,
     borderRadius: 12,
     borderWidth: 1,
@@ -58,7 +58,7 @@ export const catppuccinMocha: Theme = {
   font: {
     family: 'JetBrains Mono, Fira Code, monospace',
     fallback: 'monospace',
-    size: 14,
+    size: 17,
     weight: 'normal',
     style: 'normal',
     ligatures: true,

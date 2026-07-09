@@ -4,7 +4,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalStore } from '../store/terminal';
 import '@xterm/xterm/css/xterm.css';
 
@@ -21,10 +21,14 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const fitAddonRef = useRef<FitAddon | null>(null);
   const ptyIdRef = useRef<string | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlistenRefs = useRef<UnlistenFn[]>([]);
 
   const themeRef = useRef(useTerminalStore.getState().theme);
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
   const updateTabTitle = useTerminalStore((s) => s.updateTabTitle);
+  const settingsOpen = useTerminalStore((s) => s.settingsOpen);
+  const commandPaletteOpen = useTerminalStore((s) => s.commandPaletteOpen);
+  const cosmicText = useTerminalStore((s) => s.cosmicText);
   const activeTabIdRef = useRef(useTerminalStore.getState().activeTabId);
 
   // Subscribe to store changes without re-creating terminal
@@ -39,6 +43,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   useEffect(() => {
     if (!containerRef.current) return;
     const theme = themeRef.current;
+    let isUnmounted = false;
 
     const term = new XTerminal({
       fontFamily: theme.font.family,
@@ -46,7 +51,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       fontWeight: theme.font.style === 'italic' ? 'normal' : theme.font.weight as any,
       fontStyle: theme.font.style as any,
       theme: {
-        background: theme.background,
+        background: 'rgba(0,0,0,0)',
         foreground: theme.foreground,
         cursor: theme.cursor.cursor,
         cursorAccent: theme.cursor.text,
@@ -71,7 +76,6 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       },
       cursorBlink: theme.cursor.blinking,
       cursorStyle: theme.cursor.style,
-      cursorOpacity: theme.cursor.opacity,
       scrollback: 10000,
       allowProposedApi: true,
       drawBoldTextInBrightColors: true,
@@ -84,7 +88,8 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     term.loadAddon(fitAddon);
     term.loadAddon(search);
 
-    if (searchAddon) {
+    // Only set searchAddon ref if this pane is focused
+    if (searchAddon && isFocused) {
       searchAddon.current = search;
     }
 
@@ -99,10 +104,12 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
         if (e.type === 'keydown') {
           const selection = term.getSelection();
           if (selection) {
-            navigator.clipboard.writeText(selection);
+            navigator.clipboard.writeText(selection).catch((err) => {
+              console.error('Failed to copy to clipboard:', err);
+            });
           }
         }
-        return true;
+        return false;
       }
 
       if (isCtrl && isShift && e.key === 'V') {
@@ -111,6 +118,8 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
             if (ptyIdRef.current) {
               invoke('pty_write', { id: ptyIdRef.current, data: text });
             }
+          }).catch((err) => {
+            console.error('Failed to paste from clipboard:', err);
           });
         }
         return false;
@@ -136,18 +145,35 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     // Spawn PTY
     invoke<string>('pty_spawn', {}).then((ptyId) => {
+      if (isUnmounted) {
+        invoke('pty_close', { id: ptyId });
+        return;
+      }
       ptyIdRef.current = ptyId;
       updatePanePty(paneId, ptyId);
 
+      // Store unlisten functions for cleanup
       listen<{ id: string; data: string }>('pty-data', (event) => {
         if (event.payload.id === ptyId) {
           term.write(event.payload.data);
+        }
+      }).then((unlisten) => {
+        if (isUnmounted) {
+          unlisten();
+        } else {
+          unlistenRefs.current.push(unlisten);
         }
       });
 
       listen<string>('pty-exit', (event) => {
         if (event.payload === ptyId) {
-          term.write('\r\n\x1b[33m[Process exited]\x1b[0m\r\n');
+          useTerminalStore.getState().closePane(paneId);
+        }
+      }).then((unlisten) => {
+        if (isUnmounted) {
+          unlisten();
+        } else {
+          unlistenRefs.current.push(unlisten);
         }
       });
     });
@@ -185,8 +211,12 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      isUnmounted = true;
       resizeObserver.disconnect();
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      // Clean up Tauri event listeners
+      unlistenRefs.current.forEach((unlisten) => unlisten());
+      unlistenRefs.current = [];
       if (ptyIdRef.current) {
         invoke('pty_close', { id: ptyIdRef.current });
       }
@@ -201,7 +231,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       if (!t) return;
       const theme = state.theme;
       t.options.theme = {
-        background: theme.background,
+        background: 'rgba(0,0,0,0)',
         foreground: theme.foreground,
         cursor: theme.cursor.cursor,
         cursorAccent: theme.cursor.text,
@@ -232,6 +262,23 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     return unsub;
   }, []);
 
+  // Update searchAddon ref when focus changes
+  useEffect(() => {
+    if (isFocused && searchAddon && termRef.current) {
+      // Re-register this pane's search addon when it gains focus
+      const term = termRef.current;
+      const addons = (term as any)._addonManager?._addons;
+      if (addons) {
+        for (const addon of addons) {
+          if (addon.instance instanceof SearchAddon) {
+            searchAddon.current = addon.instance;
+            break;
+          }
+        }
+      }
+    }
+  }, [isFocused, searchAddon]);
+
   // Auto-focus when becomes active
   useEffect(() => {
     if (isFocused && termRef.current) {
@@ -241,19 +288,20 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
   // Re-focus after settings or other panels close
   useEffect(() => {
-    const handle = () => {
-      if (termRef.current) {
-        setTimeout(() => termRef.current?.focus(), 50);
-      }
-    };
-    window.addEventListener('mouseup', handle);
-    return () => window.removeEventListener('mouseup', handle);
-  }, []);
+    if (!settingsOpen && !commandPaletteOpen && isFocused && termRef.current) {
+      const timer = setTimeout(() => {
+        if (termRef.current) {
+          termRef.current.focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [settingsOpen, commandPaletteOpen, isFocused]);
 
   return (
     <div
       ref={containerRef}
-      className={`terminal ${isFocused ? 'focused' : ''}`}
+      className={`terminal ${isFocused ? 'focused' : ''} ${cosmicText ? 'cosmic-enabled' : ''}`}
       onClick={onFocus}
       style={{ width: '100%', height: '100%' }}
     />

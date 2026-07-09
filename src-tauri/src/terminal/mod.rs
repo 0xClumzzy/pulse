@@ -1,4 +1,4 @@
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem, MasterPty};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
@@ -9,13 +9,12 @@ pub struct PtyEvent {
     pub data: String,
 }
 
-#[allow(dead_code)]
 pub struct PtySession {
     pub id: String,
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub reader: Option<Box<dyn Read + Send>>,
     pub child: Box<dyn portable_pty::Child + Send>,
-    pub pty_pair: portable_pty::PtyPair,
+    pub master: Box<dyn MasterPty + Send>,
 }
 
 impl PtySession {
@@ -39,7 +38,9 @@ impl PtySession {
         });
 
         let mut cmd = CommandBuilder::new(&shell_path);
-        if let Some(dir) = cwd {
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        if let Some(dir) = &cwd {
             cmd.cwd(dir);
         }
 
@@ -47,6 +48,9 @@ impl PtySession {
             .slave
             .spawn_command(cmd)
             .map_err(|e| e.to_string())?;
+
+        // Drop the slave side so reads on master get EOF when child exits
+        drop(pair.slave);
 
         let reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
         let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
@@ -56,13 +60,12 @@ impl PtySession {
             writer: Arc::new(Mutex::new(writer)),
             reader: Some(reader),
             child,
-            pty_pair: pair,
+            master: pair.master,
         })
     }
 
-    pub fn resize(&mut self, cols: u16, rows: u16) -> Result<(), String> {
-        self.pty_pair
-            .master
+    pub fn resize(&self, cols: u16, rows: u16) -> Result<(), String> {
+        self.master
             .resize(PtySize {
                 rows,
                 cols,
@@ -70,5 +73,16 @@ impl PtySession {
                 pixel_height: 0,
             })
             .map_err(|e| e.to_string())
+    }
+
+    pub fn kill(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+impl Drop for PtySession {
+    fn drop(&mut self) {
+        self.kill();
     }
 }

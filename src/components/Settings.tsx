@@ -1,11 +1,77 @@
+import { useState } from 'react';
 import { useTerminalStore } from '../store/terminal';
 import { builtInThemes } from '../themes';
+import type { Theme } from '../types/theme';
+
+type SectionId = 'theme' | 'colors' | 'palette' | 'cursor' | 'font' | 'window' | 'glass' | 'tabbar' | 'pane' | 'animations' | 'keybindings';
+
+interface CollapsibleSectionProps {
+  id: SectionId;
+  title: string;
+  children: React.ReactNode;
+  openSection: SectionId | null;
+  setOpenSection: (id: SectionId | null) => void;
+}
+
+function CollapsibleSection({ id, title, children, openSection, setOpenSection }: CollapsibleSectionProps) {
+  const isOpen = openSection === id;
+  return (
+    <div className={`settings-section ${isOpen ? 'open' : ''}`}>
+      <button
+        className="settings-section-header"
+        onClick={() => setOpenSection(isOpen ? null : id)}
+      >
+        <span className="settings-section-title">{title}</span>
+        <span className={`settings-section-chevron ${isOpen ? 'open' : ''}`}>›</span>
+      </button>
+      {isOpen && <div className="settings-section-content">{children}</div>}
+    </div>
+  );
+}
+
+function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="settings-row">
+      <span className="settings-label">{label}</span>
+      <div className="settings-color-group">
+        <input className="settings-color" type="color" value={value} onChange={(e) => onChange(e.target.value)} />
+        <span className="settings-color-hex">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function SliderRow({ label, value, min, max, step, onChange, unit }: {
+  label: string; value: number; min: number; max: number; step: number;
+  onChange: (v: number) => void; unit?: string;
+}) {
+  return (
+    <div className="settings-row">
+      <span className="settings-label">{label}</span>
+      <div className="settings-slider-group">
+        <input
+          className="settings-slider"
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+        <span className="settings-slider-value">{value}{unit || ''}</span>
+      </div>
+    </div>
+  );
+}
 
 export function Settings() {
   const settingsOpen = useTerminalStore((s) => s.settingsOpen);
   const toggleSettings = useTerminalStore((s) => s.toggleSettings);
   const theme = useTerminalStore((s) => s.theme);
   const setTheme = useTerminalStore((s) => s.setTheme);
+  const [openSection, setOpenSection] = useState<SectionId | null>('theme');
+
+  const update = (partial: Partial<Theme>) => setTheme({ ...theme, ...partial });
 
   if (!settingsOpen) return null;
 
@@ -15,14 +81,12 @@ export function Settings() {
       <div className="settings-panel">
         <div className="settings-header">
           <span className="settings-title">Settings</span>
-          <button className="settings-close" onClick={toggleSettings}>
-            ×
-          </button>
+          <button className="settings-close" onClick={toggleSettings}>×</button>
         </div>
         <div className="settings-content">
-          {/* Theme Section */}
-          <div className="settings-section">
-            <div className="settings-section-title">Theme</div>
+
+          {/* Theme Presets */}
+          <CollapsibleSection id="theme" title="Theme Presets" openSection={openSection} setOpenSection={setOpenSection}>
             <div className="theme-grid">
               {Object.entries(builtInThemes).map(([id, t]) => (
                 <div
@@ -31,9 +95,7 @@ export function Settings() {
                   style={{ background: t.background }}
                   onClick={() => setTheme(t)}
                 >
-                  <div className="theme-card-name" style={{ color: t.foreground }}>
-                    {t.metadata.name}
-                  </div>
+                  <div className="theme-card-name" style={{ color: t.foreground }}>{t.metadata.name}</div>
                   <div className="theme-card-preview">
                     <div className="theme-card-color" style={{ background: t.palette.red }} />
                     <div className="theme-card-color" style={{ background: t.palette.green }} />
@@ -43,104 +105,50 @@ export function Settings() {
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Font Section */}
-          <div className="settings-section">
-            <div className="settings-section-title">Font</div>
-            <div className="settings-row">
-              <span className="settings-label">Family</span>
-              <input
-                className="settings-input"
-                type="text"
-                value={theme.font.family}
-                onChange={(e) =>
-                  setTheme({ ...theme, font: { ...theme.font, family: e.target.value } })
-                }
-              />
-            </div>
-            <div className="settings-row">
-              <span className="settings-label">Size</span>
-              <input
-                className="settings-input"
-                type="number"
-                value={theme.font.size}
-                onChange={(e) =>
-                  setTheme({ ...theme, font: { ...theme.font, size: Number(e.target.value) } })
-                }
-              />
-            </div>
-            <div className="settings-row">
-              <span className="settings-label">Ligatures</span>
-              <input
-                type="checkbox"
-                checked={theme.font.ligatures}
-                onChange={(e) =>
-                  setTheme({ ...theme, font: { ...theme.font, ligatures: e.target.checked } })
-                }
-              />
-            </div>
-          </div>
+          {/* Colors */}
+          <CollapsibleSection id="colors" title="Colors" openSection={openSection} setOpenSection={setOpenSection}>
+            <ColorRow label="Background" value={theme.background} onChange={(v) => update({ background: v })} />
+            <ColorRow label="Foreground" value={theme.foreground} onChange={(v) => update({ foreground: v })} />
+            <ColorRow label="Selection BG" value={theme.selection.background} onChange={(v) => update({ selection: { ...theme.selection, background: v } })} />
+            <ColorRow label="Selection FG" value={theme.selection.foreground} onChange={(v) => update({ selection: { ...theme.selection, foreground: v } })} />
+          </CollapsibleSection>
 
-          {/* Glass Section */}
-          <div className="settings-section">
-            <div className="settings-section-title">Glass Effects</div>
-            <div className="settings-row">
-              <span className="settings-label">Opacity</span>
-              <input
-                className="settings-slider"
-                type="range"
-                min="0.5"
-                max="1"
-                step="0.05"
-                value={theme.window.opacity}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    window: { ...theme.window, opacity: Number(e.target.value) },
-                  })
-                }
-              />
-              <span style={{ fontSize: 12, color: 'var(--fg)', opacity: 0.7, width: 40, textAlign: 'right' }}>
-                {Math.round(theme.window.opacity * 100)}%
-              </span>
+          {/* Palette */}
+          <CollapsibleSection id="palette" title="Palette Colors" openSection={openSection} setOpenSection={setOpenSection}>
+            <div className="settings-palette-grid">
+              <ColorRow label="Black" value={theme.palette.black} onChange={(v) => update({ palette: { ...theme.palette, black: v } })} />
+              <ColorRow label="Red" value={theme.palette.red} onChange={(v) => update({ palette: { ...theme.palette, red: v } })} />
+              <ColorRow label="Green" value={theme.palette.green} onChange={(v) => update({ palette: { ...theme.palette, green: v } })} />
+              <ColorRow label="Yellow" value={theme.palette.yellow} onChange={(v) => update({ palette: { ...theme.palette, yellow: v } })} />
+              <ColorRow label="Blue" value={theme.palette.blue} onChange={(v) => update({ palette: { ...theme.palette, blue: v } })} />
+              <ColorRow label="Magenta" value={theme.palette.magenta} onChange={(v) => update({ palette: { ...theme.palette, magenta: v } })} />
+              <ColorRow label="Cyan" value={theme.palette.cyan} onChange={(v) => update({ palette: { ...theme.palette, cyan: v } })} />
+              <ColorRow label="White" value={theme.palette.white} onChange={(v) => update({ palette: { ...theme.palette, white: v } })} />
+              <ColorRow label="Bright Black" value={theme.palette.brightBlack} onChange={(v) => update({ palette: { ...theme.palette, brightBlack: v } })} />
+              <ColorRow label="Bright Red" value={theme.palette.brightRed} onChange={(v) => update({ palette: { ...theme.palette, brightRed: v } })} />
+              <ColorRow label="Bright Green" value={theme.palette.brightGreen} onChange={(v) => update({ palette: { ...theme.palette, brightGreen: v } })} />
+              <ColorRow label="Bright Yellow" value={theme.palette.brightYellow} onChange={(v) => update({ palette: { ...theme.palette, brightYellow: v } })} />
+              <ColorRow label="Bright Blue" value={theme.palette.brightBlue} onChange={(v) => update({ palette: { ...theme.palette, brightBlue: v } })} />
+              <ColorRow label="Bright Magenta" value={theme.palette.brightMagenta} onChange={(v) => update({ palette: { ...theme.palette, brightMagenta: v } })} />
+              <ColorRow label="Bright Cyan" value={theme.palette.brightCyan} onChange={(v) => update({ palette: { ...theme.palette, brightCyan: v } })} />
+              <ColorRow label="Bright White" value={theme.palette.brightWhite} onChange={(v) => update({ palette: { ...theme.palette, brightWhite: v } })} />
+              <ColorRow label="Peach" value={theme.palette.peach || theme.palette.yellow} onChange={(v) => update({ palette: { ...theme.palette, peach: v } })} />
+              <ColorRow label="Teal" value={theme.palette.teal || theme.palette.cyan} onChange={(v) => update({ palette: { ...theme.palette, teal: v } })} />
+              <ColorRow label="Mauve" value={theme.palette.mauve || theme.palette.magenta} onChange={(v) => update({ palette: { ...theme.palette, mauve: v } })} />
+              <ColorRow label="Pink" value={theme.palette.pink || theme.palette.magenta} onChange={(v) => update({ palette: { ...theme.palette, pink: v } })} />
             </div>
-            <div className="settings-row">
-              <span className="settings-label">Blur</span>
-              <input
-                className="settings-slider"
-                type="range"
-                min="0"
-                max="40"
-                step="1"
-                value={theme.glass.blurRadius}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    glass: { ...theme.glass, blurRadius: Number(e.target.value) },
-                  })
-                }
-              />
-              <span style={{ fontSize: 12, color: 'var(--fg)', opacity: 0.7, width: 40, textAlign: 'right' }}>
-                {theme.glass.blurRadius}px
-              </span>
-            </div>
-          </div>
+          </CollapsibleSection>
 
-          {/* Cursor Section */}
-          <div className="settings-section">
-            <div className="settings-section-title">Cursor</div>
+          {/* Cursor */}
+          <CollapsibleSection id="cursor" title="Cursor" openSection={openSection} setOpenSection={setOpenSection}>
             <div className="settings-row">
               <span className="settings-label">Style</span>
               <select
                 className="settings-select"
                 value={theme.cursor.style}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    cursor: { ...theme.cursor, style: e.target.value as any },
-                  })
-                }
+                onChange={(e) => update({ cursor: { ...theme.cursor, style: e.target.value as any } })}
               >
                 <option value="block">Block</option>
                 <option value="bar">Bar</option>
@@ -149,69 +157,328 @@ export function Settings() {
             </div>
             <div className="settings-row">
               <span className="settings-label">Blink</span>
-              <input
-                type="checkbox"
-                checked={theme.cursor.blinking}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    cursor: { ...theme.cursor, blinking: e.target.checked },
-                  })
-                }
-              />
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.cursor.blinking}
+                  onChange={(e) => update({ cursor: { ...theme.cursor, blinking: e.target.checked } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
             </div>
-            <div className="settings-row">
-              <span className="settings-label">Cursor Color</span>
-              <input
-                className="settings-color"
-                type="color"
-                value={theme.cursor.cursor}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    cursor: { ...theme.cursor, cursor: e.target.value },
-                  })
-                }
-              />
-            </div>
-          </div>
+            <SliderRow
+              label="Blink Interval"
+              value={theme.cursor.blinkInterval}
+              min={100}
+              max={2000}
+              step={100}
+              onChange={(v) => update({ cursor: { ...theme.cursor, blinkInterval: v } })}
+              unit="ms"
+            />
+            <SliderRow
+              label="Cursor Opacity"
+              value={theme.cursor.opacity}
+              min={0.1}
+              max={1}
+              step={0.1}
+              onChange={(v) => update({ cursor: { ...theme.cursor, opacity: v } })}
+            />
+            <ColorRow label="Cursor Color" value={theme.cursor.cursor} onChange={(v) => update({ cursor: { ...theme.cursor, cursor: v } })} />
+            <ColorRow label="Text Color" value={theme.cursor.text} onChange={(v) => update({ cursor: { ...theme.cursor, text: v } })} />
+          </CollapsibleSection>
 
-          {/* Colors Section */}
-          <div className="settings-section">
-            <div className="settings-section-title">Colors</div>
+          {/* Font */}
+          <CollapsibleSection id="font" title="Font" openSection={openSection} setOpenSection={setOpenSection}>
             <div className="settings-row">
-              <span className="settings-label">Background</span>
+              <span className="settings-label">Family</span>
               <input
-                className="settings-color"
-                type="color"
-                value={theme.background}
-                onChange={(e) => setTheme({ ...theme, background: e.target.value })}
+                className="settings-input wide"
+                type="text"
+                value={theme.font.family}
+                onChange={(e) => update({ font: { ...theme.font, family: e.target.value } })}
               />
             </div>
             <div className="settings-row">
-              <span className="settings-label">Foreground</span>
+              <span className="settings-label">Fallback</span>
               <input
-                className="settings-color"
-                type="color"
-                value={theme.foreground}
-                onChange={(e) => setTheme({ ...theme, foreground: e.target.value })}
+                className="settings-input wide"
+                type="text"
+                value={theme.font.fallback}
+                onChange={(e) => update({ font: { ...theme.font, fallback: e.target.value } })}
               />
+            </div>
+            <SliderRow
+              label="Size"
+              value={theme.font.size}
+              min={8}
+              max={72}
+              step={1}
+              onChange={(v) => update({ font: { ...theme.font, size: v } })}
+              unit="px"
+            />
+            <div className="settings-row">
+              <span className="settings-label">Weight</span>
+              <select
+                className="settings-select"
+                value={theme.font.weight}
+                onChange={(e) => update({ font: { ...theme.font, weight: e.target.value } })}
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+                <option value="100">Thin (100)</option>
+                <option value="200">Extra Light (200)</option>
+                <option value="300">Light (300)</option>
+                <option value="400">Regular (400)</option>
+                <option value="500">Medium (500)</option>
+                <option value="600">Semi Bold (600)</option>
+                <option value="700">Bold (700)</option>
+                <option value="800">Extra Bold (800)</option>
+                <option value="900">Black (900)</option>
+              </select>
             </div>
             <div className="settings-row">
-              <span className="settings-label">Selection BG</span>
+              <span className="settings-label">Style</span>
+              <select
+                className="settings-select"
+                value={theme.font.style}
+                onChange={(e) => update({ font: { ...theme.font, style: e.target.value } })}
+              >
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+                <option value="oblique">Oblique</option>
+              </select>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Ligatures</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.font.ligatures}
+                  onChange={(e) => update({ font: { ...theme.font, ligatures: e.target.checked } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+          </CollapsibleSection>
+
+          {/* Window */}
+          <CollapsibleSection id="window" title="Window" openSection={openSection} setOpenSection={setOpenSection}>
+            <SliderRow
+              label="Opacity"
+              value={theme.window.opacity}
+              min={0.3}
+              max={1}
+              step={0.05}
+              onChange={(v) => update({ window: { ...theme.window, opacity: v } })}
+              unit="%"
+            />
+            <SliderRow
+              label="Border Radius"
+              value={theme.window.borderRadius}
+              min={0}
+              max={32}
+              step={1}
+              onChange={(v) => update({ window: { ...theme.window, borderRadius: v } })}
+              unit="px"
+            />
+            <div className="settings-row">
+              <span className="settings-label">Border Width</span>
               <input
-                className="settings-color"
-                type="color"
-                value={theme.selection.background}
-                onChange={(e) =>
-                  setTheme({
-                    ...theme,
-                    selection: { ...theme.selection, background: e.target.value },
-                  })
-                }
+                className="settings-input"
+                type="number"
+                min={0}
+                max={4}
+                value={theme.window.borderWidth}
+                onChange={(e) => update({ window: { ...theme.window, borderWidth: Number(e.target.value) } })}
               />
             </div>
-          </div>
+            <ColorRow label="Border Color" value={theme.window.borderColor} onChange={(v) => update({ window: { ...theme.window, borderColor: v } })} />
+            <div className="settings-row">
+              <span className="settings-label">Shadow</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.window.shadow}
+                  onChange={(e) => update({ window: { ...theme.window, shadow: e.target.checked } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <SliderRow
+              label="Shadow Blur"
+              value={theme.window.shadowBlur}
+              min={0}
+              max={100}
+              step={1}
+              onChange={(v) => update({ window: { ...theme.window, shadowBlur: v } })}
+              unit="px"
+            />
+            <SliderRow
+              label="Shadow Opacity"
+              value={theme.window.shadowOpacity}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => update({ window: { ...theme.window, shadowOpacity: v } })}
+            />
+            <SliderRow
+              label="Padding X"
+              value={theme.window.paddingX}
+              min={0}
+              max={32}
+              step={1}
+              onChange={(v) => update({ window: { ...theme.window, paddingX: v } })}
+              unit="px"
+            />
+            <SliderRow
+              label="Padding Y"
+              value={theme.window.paddingY}
+              min={0}
+              max={32}
+              step={1}
+              onChange={(v) => update({ window: { ...theme.window, paddingY: v } })}
+              unit="px"
+            />
+          </CollapsibleSection>
+
+          {/* Glass */}
+          <CollapsibleSection id="glass" title="Glass Effects" openSection={openSection} setOpenSection={setOpenSection}>
+            <div className="settings-row">
+              <span className="settings-label">Enabled</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.glass.enabled}
+                  onChange={(e) => update({ glass: { ...theme.glass, enabled: e.target.checked } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <SliderRow
+              label="Blur Radius"
+              value={theme.glass.blurRadius}
+              min={0}
+              max={60}
+              step={1}
+              onChange={(v) => update({ glass: { ...theme.glass, blurRadius: v } })}
+              unit="px"
+            />
+            <SliderRow
+              label="Noise Opacity"
+              value={theme.glass.noiseOpacity}
+              min={0}
+              max={0.1}
+              step={0.005}
+              onChange={(v) => update({ glass: { ...theme.glass, noiseOpacity: v } })}
+            />
+            <SliderRow
+              label="Saturation"
+              value={theme.glass.saturation}
+              min={0}
+              max={300}
+              step={10}
+              onChange={(v) => update({ glass: { ...theme.glass, saturation: v } })}
+              unit="%"
+            />
+          </CollapsibleSection>
+
+          {/* Tab Bar */}
+          <CollapsibleSection id="tabbar" title="Tab Bar" openSection={openSection} setOpenSection={setOpenSection}>
+            <SliderRow
+              label="Height"
+              value={theme.tabBar.height}
+              min={24}
+              max={64}
+              step={1}
+              onChange={(v) => update({ tabBar: { ...theme.tabBar, height: v } })}
+              unit="px"
+            />
+            <ColorRow label="Background" value={theme.tabBar.background} onChange={(v) => update({ tabBar: { ...theme.tabBar, background: v } })} />
+            <SliderRow
+              label="Border Height"
+              value={theme.tabBar.borderHeight}
+              min={0}
+              max={4}
+              step={1}
+              onChange={(v) => update({ tabBar: { ...theme.tabBar, borderHeight: v } })}
+              unit="px"
+            />
+            <ColorRow label="Border Color" value={theme.tabBar.borderColor} onChange={(v) => update({ tabBar: { ...theme.tabBar, borderColor: v } })} />
+            <SliderRow
+              label="Tab Padding"
+              value={theme.tabBar.tabPaddingX}
+              min={4}
+              max={32}
+              step={1}
+              onChange={(v) => update({ tabBar: { ...theme.tabBar, tabPaddingX: v } })}
+              unit="px"
+            />
+          </CollapsibleSection>
+
+          {/* Pane */}
+          <CollapsibleSection id="pane" title="Panes" openSection={openSection} setOpenSection={setOpenSection}>
+            <SliderRow
+              label="Border Width"
+              value={theme.pane.borderWidth}
+              min={0}
+              max={4}
+              step={1}
+              onChange={(v) => update({ pane: { ...theme.pane, borderWidth: v } })}
+              unit="px"
+            />
+            <ColorRow label="Border Color" value={theme.pane.borderColor} onChange={(v) => update({ pane: { ...theme.pane, borderColor: v } })} />
+            <ColorRow label="Active Border" value={theme.pane.activeBorderColor} onChange={(v) => update({ pane: { ...theme.pane, activeBorderColor: v } })} />
+            <SliderRow
+              label="Splitter Size"
+              value={theme.pane.splitterSize}
+              min={2}
+              max={12}
+              step={1}
+              onChange={(v) => update({ pane: { ...theme.pane, splitterSize: v } })}
+              unit="px"
+            />
+          </CollapsibleSection>
+
+          {/* Animations */}
+          <CollapsibleSection id="animations" title="Animations" openSection={openSection} setOpenSection={setOpenSection}>
+            <div className="settings-row">
+              <span className="settings-label">Enabled</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.animations.enabled}
+                  onChange={(e) => update({ animations: { ...theme.animations, enabled: e.target.checked } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <SliderRow
+              label="Duration"
+              value={theme.animations.duration}
+              min={50}
+              max={1000}
+              step={50}
+              onChange={(v) => update({ animations: { ...theme.animations, duration: v } })}
+              unit="ms"
+            />
+            <div className="settings-row">
+              <span className="settings-label">Easing</span>
+              <select
+                className="settings-select"
+                value={theme.animations.easing}
+                onChange={(e) => update({ animations: { ...theme.animations, easing: e.target.value } })}
+              >
+                <option value="ease">Ease</option>
+                <option value="ease-in">Ease In</option>
+                <option value="ease-out">Ease Out</option>
+                <option value="ease-in-out">Ease In Out</option>
+                <option value="linear">Linear</option>
+                <option value="cubic-bezier(0.16, 1, 0.3, 1)">Expo Out</option>
+                <option value="cubic-bezier(0.85, 0, 0.15, 1)">Circ In Out</option>
+              </select>
+            </div>
+          </CollapsibleSection>
+
         </div>
       </div>
     </>

@@ -7,8 +7,55 @@ import { CommandPalette } from './components/CommandPalette';
 import { Settings } from './components/Settings';
 import { useTerminalStore } from './store/terminal';
 import { SearchAddon } from '@xterm/addon-search';
-import { motion } from 'framer-motion';
+import './App.css';
 import './styles/glass.css';
+
+function matchesKeybinding(e: KeyboardEvent, binding: string): boolean {
+  if (!binding) return false;
+  const parts = binding.split('+');
+  let match = true;
+  
+  let reqCtrl = false;
+  let reqShift = false;
+  let reqAlt = false;
+  let reqMeta = false;
+  let targetKey = '';
+
+  for (const part of parts) {
+    const p = part.trim().toLowerCase();
+    if (p === 'ctrl' || p === 'control') reqCtrl = true;
+    else if (p === 'shift') reqShift = true;
+    else if (p === 'alt' || p === 'opt' || p === 'option') reqAlt = true;
+    else if (p === 'meta' || p === 'cmd' || p === 'command' || p === 'win' || p === 'super') reqMeta = true;
+    else targetKey = p;
+  }
+
+  const hasCtrl = e.ctrlKey;
+  const hasShift = e.shiftKey;
+  const hasAlt = e.altKey;
+  const hasMeta = e.metaKey;
+
+  if (hasCtrl !== reqCtrl) match = false;
+  if (hasShift !== reqShift) match = false;
+  if (hasAlt !== reqAlt) match = false;
+  if (hasMeta !== reqMeta) match = false;
+  
+  let eventKey = e.key.toLowerCase();
+  if (eventKey === 'arrowleft') eventKey = 'left';
+  if (eventKey === 'arrowright') eventKey = 'right';
+  if (eventKey === 'arrowup') eventKey = 'up';
+  if (eventKey === 'arrowdown') eventKey = 'down';
+
+  let targetNormKey = targetKey;
+  if (targetNormKey === 'arrowleft') targetNormKey = 'left';
+  if (targetNormKey === 'arrowright') targetNormKey = 'right';
+  if (targetNormKey === 'arrowup') targetNormKey = 'up';
+  if (targetNormKey === 'arrowdown') targetNormKey = 'down';
+
+  if (eventKey !== targetNormKey) match = false;
+
+  return match;
+}
 
 function App() {
   const tabs = useTerminalStore((s) => s.tabs);
@@ -17,20 +64,48 @@ function App() {
 
   const searchAddon = useRef<SearchAddon | null>(null);
 
+  const initTheme = useTerminalStore((s) => s.initTheme);
+
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
+
   // Apply theme CSS variables
   const theme = useTerminalStore((s) => s.theme);
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--bg', theme.background);
+    const bg = theme.background;
+    const opacity = theme.window.opacity;
+    const glassBlur = theme.glass.blurRadius;
+
+    root.style.setProperty('--bg', bg);
     root.style.setProperty('--fg', theme.foreground);
     root.style.setProperty('--teal', theme.palette.teal || theme.palette.cyan);
     root.style.setProperty('--peach', theme.palette.peach || theme.palette.yellow);
     root.style.setProperty('--mauve', theme.palette.mauve || theme.palette.magenta);
-    root.style.setProperty('--overlay', `rgba(${hexToRgb(theme.background)}, ${theme.window.opacity})`);
-    root.style.setProperty('--glass-blur', `${theme.glass.blurRadius}px`);
+    root.style.setProperty('--overlay', `rgba(${hexToRgb(bg)}, ${opacity})`);
+    root.style.setProperty('--glass-blur', `${glassBlur}px`);
+    root.style.setProperty('--glass-border', `rgba(255, 255, 255, ${Math.min(opacity * 0.12, 0.12)})`);
     root.style.setProperty('--tab-height', `${theme.tabBar.height}px`);
     root.style.setProperty('--font-mono', theme.font.family);
+
+    // Derive semi-transparent panel colors from the theme background
+    const rgb = hexToRgb(bg);
+    root.style.setProperty('--titlebar-bg', `rgba(${rgb}, ${Math.min(opacity * 0.8, 0.9)})`);
+    root.style.setProperty('--titlebar-border', `rgba(255, 255, 255, 0.06)`);
+    root.style.setProperty('--tabbar-bg', `rgba(${rgb}, ${Math.min(opacity * 0.8, 0.9)})`);
+    root.style.setProperty('--tabbar-border', `rgba(255, 255, 255, 0.06)`);
+    root.style.setProperty('--pane-border', `rgba(255, 255, 255, 0.06)`);
+    root.style.setProperty('--pane-active-border', theme.pane.activeBorderColor);
+    root.style.setProperty('--panel-bg', `rgba(${rgb}, ${Math.min(opacity * 1.1, 0.95)})`);
+    root.style.setProperty('--panel-border', `rgba(255, 255, 255, 0.1)`);
+    root.style.setProperty('--selection-bg', theme.selection.background);
+    root.style.setProperty('--selection-fg', theme.selection.foreground);
   }, [theme]);
+
+  const handleFocus = useCallback((id: string) => {
+    useTerminalStore.getState().setActivePane(id);
+  }, []);
 
   // Keyboard shortcuts
   const activeTabIdRef = useRef(activeTabId);
@@ -41,66 +116,88 @@ function App() {
   tabsRef.current = tabs;
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const isCtrl = e.ctrlKey || e.metaKey;
-    const isShift = e.shiftKey;
-    const isAlt = e.altKey;
+    const bindings = useTerminalStore.getState().theme.keybindings;
 
-    if (isCtrl && isShift && e.key === 'T') {
+    if (matchesKeybinding(e, bindings.newTab)) {
       e.preventDefault();
       useTerminalStore.getState().addTab();
     }
-    if (isCtrl && isShift && e.key === 'W') {
+    else if (matchesKeybinding(e, bindings.closeTab)) {
       e.preventDefault();
       useTerminalStore.getState().closeTab(activeTabIdRef.current);
     }
-    if (isCtrl && isShift && e.key === 'E') {
+    else if (matchesKeybinding(e, bindings.splitVertical)) {
       e.preventDefault();
       useTerminalStore.getState().splitPane(activePaneIdRef.current, 'vertical');
     }
-    if (isCtrl && isShift && e.key === 'O') {
+    else if (matchesKeybinding(e, bindings.splitHorizontal)) {
       e.preventDefault();
       useTerminalStore.getState().splitPane(activePaneIdRef.current, 'horizontal');
     }
-    if (isCtrl && isShift && e.key === 'X') {
+    else if (matchesKeybinding(e, bindings.closePane)) {
       e.preventDefault();
       useTerminalStore.getState().closePane(activePaneIdRef.current);
     }
-    if (isCtrl && isShift) {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); useTerminalStore.getState().movePane('left'); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); useTerminalStore.getState().movePane('right'); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); useTerminalStore.getState().movePane('up'); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); useTerminalStore.getState().movePane('down'); }
+    else if (matchesKeybinding(e, bindings.paneLeft)) {
+      e.preventDefault();
+      useTerminalStore.getState().movePane('left');
     }
-    if (isCtrl && isShift && e.key === 'P') {
+    else if (matchesKeybinding(e, bindings.paneRight)) {
+      e.preventDefault();
+      useTerminalStore.getState().movePane('right');
+    }
+    else if (matchesKeybinding(e, bindings.paneUp)) {
+      e.preventDefault();
+      useTerminalStore.getState().movePane('up');
+    }
+    else if (matchesKeybinding(e, bindings.paneDown)) {
+      e.preventDefault();
+      useTerminalStore.getState().movePane('down');
+    }
+    else if (matchesKeybinding(e, bindings.commandPalette)) {
       e.preventDefault();
       useTerminalStore.getState().toggleCommandPalette();
     }
-    if (isCtrl && isShift && e.key === 'F') {
+    else if (matchesKeybinding(e, bindings.search)) {
       e.preventDefault();
       useTerminalStore.getState().toggleSearch();
     }
-    if (isCtrl && isShift && (e.key === ',' || e.key === '<')) {
+    else if (matchesKeybinding(e, bindings.settings)) {
       e.preventDefault();
       useTerminalStore.getState().toggleSettings();
     }
-    if (isCtrl && e.key === 'PageDown') {
+    else if (matchesKeybinding(e, bindings.nextTab)) {
       e.preventDefault();
       const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
       const next = (current + 1) % tabsRef.current.length;
       useTerminalStore.getState().setActiveTab(tabsRef.current[next].id);
     }
-    if (isCtrl && e.key === 'PageUp') {
+    else if (matchesKeybinding(e, bindings.prevTab)) {
       e.preventDefault();
       const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
       const prev = (current - 1 + tabsRef.current.length) % tabsRef.current.length;
       useTerminalStore.getState().setActiveTab(tabsRef.current[prev].id);
     }
-    if (isCtrl && isAlt && e.key >= '1' && e.key <= '9') {
+    // Handle Ctrl+Alt+1..9 to select tabs
+    else if (e.ctrlKey && e.altKey && e.key >= '1' && e.key <= '9') {
       e.preventDefault();
       const index = parseInt(e.key) - 1;
       if (tabsRef.current[index]) {
         useTerminalStore.getState().setActiveTab(tabsRef.current[index].id);
       }
+    }
+    // Handle zoom shortcuts
+    else if (matchesKeybinding(e, bindings.zoomIn)) {
+      e.preventDefault();
+      useTerminalStore.getState().zoomIn();
+    }
+    else if (matchesKeybinding(e, bindings.zoomOut)) {
+      e.preventDefault();
+      useTerminalStore.getState().zoomOut();
+    }
+    else if (matchesKeybinding(e, bindings.zoomReset)) {
+      e.preventDefault();
+      useTerminalStore.getState().zoomReset();
     }
   }, []);
 
@@ -110,12 +207,7 @@ function App() {
   }, [handleKeyDown]);
 
   return (
-    <motion.div
-      className="glass-window"
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-    >
+    <div className="glass-window">
       <TitleBar />
       <TabBar />
       <div className="terminal-container">
@@ -126,13 +218,15 @@ function App() {
               display: tab.id === activeTabId ? 'block' : 'none',
               width: '100%',
               height: '100%',
+              position: 'absolute',
+              inset: 0,
             }}
           >
             {tab.panes[0] && (
               <SplitPane
                 pane={tab.panes[0]}
                 isFocused={tab.id === activeTabId}
-                onFocus={(id) => useTerminalStore.getState().setActivePane(id)}
+                onFocus={handleFocus}
                 searchAddon={searchAddon}
               />
             )}
@@ -142,7 +236,7 @@ function App() {
       </div>
       <CommandPalette />
       <Settings />
-    </motion.div>
+    </div>
   );
 }
 
