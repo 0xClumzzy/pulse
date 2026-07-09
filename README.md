@@ -71,28 +71,18 @@
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 ```
 
-### Package Managers
+### Debian/Ubuntu (.deb)
 
-#### Arch Linux (AUR)
-```bash
-yay -S pulse
-```
-
-#### Debian/Ubuntu (.deb)
 ```bash
 # Download the latest .deb from Releases
 sudo dpkg -i pulse_0.1.0_amd64.deb
 ```
 
-#### Fedora/RHEL (.rpm)
+### Fedora/RHEL (.rpm)
+
 ```bash
 # Download the latest .rpm from Releases
 sudo rpm -i pulse-0.1.0-1.x86_64.rpm
-```
-
-#### macOS
-```bash
-# Download the latest .dmg from Releases
 ```
 
 ### Build from Source
