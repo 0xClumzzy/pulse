@@ -111,6 +111,21 @@ body {
   background: #a6e3a1;
 }
 
+.titlebar-btn.settings {
+  background: transparent;
+  color: var(--fg);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.titlebar-btn.settings:hover {
+  opacity: 1;
+  background: rgba(205, 214, 244, 0.1);
+}
+
 /* Tab Bar */
 .tab-bar {
   display: flex;
