@@ -77,6 +77,37 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     term.open(containerRef.current);
 
+    // Handle copy/paste and other keybindings
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
+
+      // Ctrl+Shift+C: Copy selection
+      if (isCtrl && isShift && e.key === 'C') {
+        if (e.type === 'keydown') {
+          const selection = term.getSelection();
+          if (selection) {
+            navigator.clipboard.writeText(selection);
+          }
+        }
+        return true;
+      }
+
+      // Ctrl+Shift+V: Paste
+      if (isCtrl && isShift && e.key === 'V') {
+        if (e.type === 'keydown') {
+          navigator.clipboard.readText().then((text) => {
+            if (ptyIdRef.current) {
+              invoke('pty_write', { id: ptyIdRef.current, data: text });
+            }
+          });
+        }
+        return false;
+      }
+
+      return true;
+    });
+
     try {
       const webglAddon = new WebglAddon();
       webglAddon.onContextLoss(() => {

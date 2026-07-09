@@ -2,11 +2,13 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTerminalStore } from '../store/terminal';
 
 export function TitleBar() {
-  const theme = useTerminalStore((s) => s.theme);
+  const toggleSettings = useTerminalStore((s) => s.toggleSettings);
 
   return (
     <div className="titlebar" data-tauri-drag-region>
-      <div className="titlebar-title">Pulse</div>
+      <div className="titlebar-title" onClick={toggleSettings} style={{ cursor: 'pointer' }}>
+        Pulse
+      </div>
       <div className="titlebar-controls">
         <button
           className="titlebar-btn minimize"
