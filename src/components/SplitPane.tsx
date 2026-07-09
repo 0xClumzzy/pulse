@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Terminal } from './Terminal';
+import Terminal from './Terminal';
 import { useTerminalStore } from '../store/terminal';
 import { SearchAddon } from '@xterm/addon-search';
 import { motion, AnimatePresence } from 'framer-motion';

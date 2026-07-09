@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { Terminal as XTerminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { FitAddon } from '@xterm/addon-fit';
@@ -241,3 +241,5 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     />
   );
 }
+
+export default memo(Terminal);
