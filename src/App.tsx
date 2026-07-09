@@ -79,7 +79,7 @@ function App() {
       e.preventDefault();
       useTerminalStore.getState().toggleSearch();
     }
-    if (isCtrl && isShift && e.key === ',') {
+    if (isCtrl && isShift && (e.key === ',' || e.key === '<')) {
       e.preventDefault();
       useTerminalStore.getState().toggleSettings();
     }

@@ -6,7 +6,15 @@ export function TitleBar() {
 
   return (
     <div className="titlebar" data-tauri-drag-region>
-      <div className="titlebar-title" onClick={toggleSettings} style={{ cursor: 'pointer' }}>
+      <div
+        className="titlebar-title"
+        data-tauri-drag-region={false}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleSettings();
+        }}
+        style={{ cursor: 'pointer' }}
+      >
         Pulse
       </div>
       <div className="titlebar-controls">
