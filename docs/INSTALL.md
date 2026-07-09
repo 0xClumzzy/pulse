@@ -43,9 +43,15 @@ sudo apt install curl git nodejs npm rustc cargo build-essential libwebkit2gtk-4
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 ```
 
-Or install the pre-built `.deb` package:
+Or install a pre-built package:
 
 ```bash
+# Binary (no dependencies needed at runtime beyond WebKitGTK)
+wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-x86_64
+chmod +x pulse-x86_64
+sudo mv pulse-x86_64 /usr/local/bin/pulse
+
+# .deb package
 wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse_0.1.0_amd64.deb
 sudo dpkg -i pulse_0.1.0_amd64.deb
 ```
@@ -60,9 +66,15 @@ sudo dnf install curl git nodejs npm rust cargo webkit2gtk4.1-devel gtk3-devel l
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 ```
 
-Or install the pre-built `.rpm` package:
+Or install a pre-built package:
 
 ```bash
+# Binary
+wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-x86_64
+chmod +x pulse-x86_64
+sudo mv pulse-x86_64 /usr/local/bin/pulse
+
+# .rpm package
 wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-0.1.0-1.x86_64.rpm
 sudo rpm -i pulse-0.1.0-1.x86_64.rpm
 ```

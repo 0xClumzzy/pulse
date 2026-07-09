@@ -21,18 +21,14 @@ jobs:
         include:
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            arch: x86_64
           - platform: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-          - platform: macos-latest
-            target: x86_64-apple-darwin
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+            arch: aarch64
 
     runs-on: ${{ matrix.platform }}
     container:
-      image: ${{ matrix.platform == 'ubuntu-22.04' && 'ghcr.io/nicholasgasior/tauri-deb:latest' || '' }}
+      image: ghcr.io/nicholasgasior/tauri-deb:latest
 
     steps:
       - name: Checkout
@@ -48,8 +44,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install dependencies (ubuntu)
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf
@@ -65,6 +60,11 @@ jobs:
           tauriScript: npx tauri
           args: --target ${{ matrix.target }}
 
+      - name: Rename binary
+        run: |
+          mv src-tauri/target/${{ matrix.target }}/release/pulse \
+             src-tauri/target/${{ matrix.target }}/release/pulse-${{ matrix.arch }}
+
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -73,9 +73,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
+            src-tauri/target/${{ matrix.target }}/release/pulse-${{ matrix.arch }}
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/windows/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/windows/*.exe
