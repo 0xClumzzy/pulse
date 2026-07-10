@@ -46,22 +46,6 @@
   <em>Dark mode with Catppuccin Mocha theme</em>
 </p>
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  ● ● ●                                    Pulse         │
-├──────────────┬──────────────────────────────────────────┤
-│ Shell 1  ×   │ Shell 2  ×        +                      │
-├──────────────┼──────────────────────────────────────────┤
-│              │                                          │
-│  (clumzzy)   │  (clumzzy) in ~/projects                 │
-│  in ~/code   │  on main ✓                               │
-│              │                                          │
-│  ➤ ls -la    │  ➤ cargo build                           │
-│  total 32    │     Compiling pulse v0.1.0               │
-│  drwxr-xr-x  │     Finished release [optimized]        │
-│              │                                          │
-└──────────────┴──────────────────────────────────────────┘
-```
 
 ## Installation
 
