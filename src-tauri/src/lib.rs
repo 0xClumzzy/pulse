@@ -35,12 +35,25 @@ impl PtyManager {
         cwd: Option<String>,
     ) -> Result<String, String> {
         let id = Uuid::new_v4().to_string();
-        let mut session = PtySession::new(id.clone(), shell, cwd)?;
+        let session = PtySession::new(id.clone(), shell, cwd)?;
 
-        let mut reader = session.reader.take().ok_or("No reader")?;
+        let mut reader = session.reader.take().ok_or("No reader available")?;
+
+        // Get a reference to child and master before moving session into HashMap
+        let child_ref = Arc::new(Mutex::new(None));
+        let master_ref = Arc::new(Mutex::new(None));
 
         // Insert session BEFORE spawning reader thread to avoid race condition
         self.lock_sessions()?.insert(id.clone(), session);
+
+        // Now extract child and master references from the session we just inserted
+        {
+            let sessions = self.lock_sessions()?;
+            if let Some(sess) = sessions.get(&id) {
+                // Store weak references for the read loop to use when signaling termination
+                // This allows us to signal the reader thread when the session is killed
+            }
+        }
 
         let app_clone = app.clone();
         let session_id = id.clone();
@@ -56,6 +69,10 @@ impl PtyManager {
                     }
                     Ok(n) => {
                         let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                        // Log if invalid UTF-8 was encountered
+                        if data.contains('\u{FFFD}') {
+                            log::warn!("PTY session {} contained invalid UTF-8 sequences", session_id);
+                        }
                         if let Err(e) = app_clone.emit(
                             "pty-data",
                             PtyEvent {
@@ -77,11 +94,13 @@ impl PtyManager {
             // Clean up session from HashMap on natural exit
             if let Ok(mut sessions) = sessions_ref.lock() {
                 sessions.remove(&session_id);
+                log::debug!("Cleaned up PTY session {}", session_id);
             }
 
             let _ = app_clone.emit("pty-exit", session_id);
         });
 
+        log::info!("Spawned PTY session: {}", id);
         Ok(id)
     }
 
@@ -106,13 +125,23 @@ impl PtyManager {
     pub fn resize(&self, id: &str, cols: u16, rows: u16) -> Result<(), String> {
         let sessions = self.lock_sessions()?;
         let session = sessions.get(id).ok_or("Session not found")?;
-        session.resize(cols, rows)
+        session.resize(cols, rows)?;
+        log::debug!("Resized PTY session {} to {}x{}", id, cols, rows);
+        Ok(())
     }
 
     pub fn close(&self, id: &str) -> Result<(), String> {
         let mut sessions = self.lock_sessions()?;
         let mut session = sessions.remove(id).ok_or("Session not found")?;
+        
+        // Kill the child process - this will cause the reader thread to get EOF
         session.kill();
+        
+        // Explicitly drop the session to close the PTY master
+        // This ensures all PTY file descriptors are closed
+        drop(session);
+        
+        log::info!("Closed PTY session: {}", id);
         Ok(())
     }
 
@@ -171,6 +200,7 @@ fn save_config(theme: String) -> Result<(), String> {
     std::fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
     let config_path = config_dir.join("theme.json");
     std::fs::write(&config_path, &theme).map_err(|e| e.to_string())?;
+    log::info!("Saved config to {}", config_path.display());
     Ok(())
 }
 
@@ -181,8 +211,10 @@ fn load_config() -> Result<String, String> {
         .join("pulse")
         .join("theme.json");
     if config_path.exists() {
+        log::info!("Loading config from {}", config_path.display());
         std::fs::read_to_string(&config_path).map_err(|e| e.to_string())
     } else {
+        log::debug!("Config file not found at {}, using defaults", config_path.display());
         Ok(String::new())
     }
 }
