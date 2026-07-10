@@ -5,9 +5,15 @@ use std::thread;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 use log;
+use std::sync::OnceLock;
+use winit::event_loop::{EventLoop, ControlFlow};
+use winit::window::WindowBuilder;
 
 mod terminal;
+mod render;
+
 use terminal::{PtyEvent, PtySession};
+use render::Surface;
 
 pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, PtySession>>>,
@@ -35,9 +41,9 @@ impl PtyManager {
         cwd: Option<String>,
     ) -> Result<String, String> {
         let id = Uuid::new_v4().to_string();
-        let mut session = PtySession::new(id.clone(), shell, cwd)?;
+        let session = PtySession::new(id.clone(), shell, cwd)?;
 
-        let mut reader = session.reader.take().ok_or("No reader")?;
+        let mut reader = session.reader.take().ok_or("No reader available")?;
 
         // Insert session BEFORE spawning reader thread to avoid race condition
         self.lock_sessions()?.insert(id.clone(), session);
@@ -56,6 +62,9 @@ impl PtyManager {
                     }
                     Ok(n) => {
                         let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                        if data.contains('\u{FFFD}') {
+                            log::warn!("PTY session {} contained invalid UTF-8 sequences", session_id);
+                        }
                         if let Err(e) = app_clone.emit(
                             "pty-data",
                             PtyEvent {
@@ -77,22 +86,22 @@ impl PtyManager {
             // Clean up session from HashMap on natural exit
             if let Ok(mut sessions) = sessions_ref.lock() {
                 sessions.remove(&session_id);
+                log::debug!("Cleaned up PTY session {}", session_id);
             }
 
             let _ = app_clone.emit("pty-exit", session_id);
         });
 
+        log::info!("Spawned PTY session: {}", id);
         Ok(id)
     }
 
     pub fn write(&self, id: &str, data: &str) -> Result<(), String> {
-        // Clone the writer Arc to release the sessions lock before doing I/O
         let writer = {
             let sessions = self.lock_sessions()?;
             let session = sessions.get(id).ok_or("Session not found")?;
             Arc::clone(&session.writer)
         };
-        // Now write without holding the sessions lock
         let mut writer = writer
             .lock()
             .map_err(|e| format!("Failed to lock writer: {}", e))?;
@@ -106,13 +115,17 @@ impl PtyManager {
     pub fn resize(&self, id: &str, cols: u16, rows: u16) -> Result<(), String> {
         let sessions = self.lock_sessions()?;
         let session = sessions.get(id).ok_or("Session not found")?;
-        session.resize(cols, rows)
+        session.resize(cols, rows)?;
+        log::debug!("Resized PTY session {} to {}x{}", id, cols, rows);
+        Ok(())
     }
 
     pub fn close(&self, id: &str) -> Result<(), String> {
         let mut sessions = self.lock_sessions()?;
         let mut session = sessions.remove(id).ok_or("Session not found")?;
         session.kill();
+        drop(session);
+        log::info!("Closed PTY session: {}", id);
         Ok(())
     }
 
@@ -171,6 +184,7 @@ fn save_config(theme: String) -> Result<(), String> {
     std::fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
     let config_path = config_dir.join("theme.json");
     std::fs::write(&config_path, &theme).map_err(|e| e.to_string())?;
+    log::info!("Saved config to {}", config_path.display());
     Ok(())
 }
 
@@ -181,8 +195,10 @@ fn load_config() -> Result<String, String> {
         .join("pulse")
         .join("theme.json");
     if config_path.exists() {
+        log::info!("Loading config from {}", config_path.display());
         std::fs::read_to_string(&config_path).map_err(|e| e.to_string())
     } else {
+        log::debug!("Config file not found at {}, using defaults", config_path.display());
         Ok(String::new())
     }
 }
