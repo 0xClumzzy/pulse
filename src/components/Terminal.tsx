@@ -95,6 +95,14 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     term.open(containerRef.current);
 
+    // Copy on selection
+    term.onSelectionChange(() => {
+      const selection = term.getSelection();
+      if (selection) {
+        navigator.clipboard.writeText(selection).catch(() => {});
+      }
+    });
+
     // Handle copy/paste
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       const isCtrl = e.ctrlKey || e.metaKey;

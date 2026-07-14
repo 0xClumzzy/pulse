@@ -268,9 +268,7 @@ export function CommandPalette() {
         <div className="command-palette-list">
           {tab === 'commands' && (
             filteredCommands.length === 0 ? (
-              <div className="command-item">
-                <span className="command-item-label" style={{ opacity: 0.5 }}>No matching commands</span>
-              </div>
+              <div className="cp-empty">No matching commands</div>
             ) : (
               filteredCommands.map((cmd, index) => (
                 <div
@@ -403,9 +401,7 @@ export function CommandPalette() {
               </div>
 
               {filteredPayloads.length === 0 && filteredWordlists.length === 0 && query !== '' && !query.toLowerCase().includes('listen') && !query.toLowerCase().includes('serve') ? (
-                <div className="command-item">
-                  <span className="command-item-label" style={{ opacity: 0.5 }}>No matching payloads</span>
-                </div>
+                <div className="cp-empty">No matching payloads</div>
               ) : (
                 filteredPayloads.length > 0 && (
                   <div className="cp-section">
