@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { Terminal as XTerminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { FitAddon } from '@xterm/addon-fit';
@@ -22,6 +22,8 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const ptyIdRef = useRef<string | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlistenRefs = useRef<UnlistenFn[]>([]);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const themeRef = useRef(useTerminalStore.getState().theme);
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
@@ -99,7 +101,11 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     term.onSelectionChange(() => {
       const selection = term.getSelection();
       if (selection) {
-        navigator.clipboard.writeText(selection).catch(() => {});
+        navigator.clipboard.writeText(selection).then(() => {
+          setCopied(true);
+          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+          copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
+        }).catch(() => {});
       }
     });
 
@@ -307,12 +313,17 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   }, [settingsOpen, commandPaletteOpen, isFocused]);
 
   return (
-    <div
-      ref={containerRef}
-      className={`terminal ${isFocused ? 'focused' : ''} ${cosmicText ? 'cosmic-enabled' : ''}`}
-      onClick={onFocus}
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div
+        ref={containerRef}
+        className={`terminal ${isFocused ? 'focused' : ''} ${cosmicText ? 'cosmic-enabled' : ''}`}
+        onClick={onFocus}
+        style={{ width: '100%', height: '100%' }}
+      />
+      {copied && (
+        <div className="copy-toast">Copied</div>
+      )}
+    </div>
   );
 }
 

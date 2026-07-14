@@ -319,6 +319,36 @@ body {
   background: rgba(88, 91, 112, 0.8);
 }
 
+/* Copy toast */
+.copy-toast {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 12px;
+  background: rgba(148, 226, 213, 0.15);
+  border: 1px solid rgba(148, 226, 213, 0.25);
+  border-radius: 6px;
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  pointer-events: none;
+  animation: copy-toast-in 0.15s ease-out, copy-toast-out 0.2s ease-in 1s forwards;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@keyframes copy-toast-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes copy-toast-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* ===== SEARCH BAR ===== */
 .search-bar {
   position: absolute;
