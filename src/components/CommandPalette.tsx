@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useTerminalStore, type PayloadEncodeMode, type PaletteTab } from '../store/terminal';
 import type { HostEnvironment } from '../types/terminal';
 import { PAYLOADS, WORDLISTS, type Payload } from './PayloadPalette';
@@ -21,11 +22,26 @@ const SERVE_CMDS = [
   { id: 'updog', label: 'Updog (HTTPS)', content: 'updog -p {LPORT:-9090}' },
 ];
 
+// Saved SSH hosts (in a real app, this would be loaded from config)
+const SAVED_HOSTS = [
+  { id: 'local', label: 'Local Shell', host: '', port: 22, user: '' },
+];
+
 function substituteVars(s: string, lhost: string, lport: string, target: string): string {
   return s
     .replace(/\{LHOST\}/g, lhost || '127.0.0.1')
     .replace(/\{LPORT\}/g, lport || '4444')
     .replace(/\{TARGET\}/g, target || 'example.com');
+}
+
+async function spawnSshTab(host: string, port: number, user: string) {
+  const ptyId = await invoke<string>('pty_spawn_ssh', { host, port, user: user || undefined });
+  useTerminalStore.getState().addTab();
+  const state = useTerminalStore.getState();
+  const activeTab = state.tabs[state.tabs.length - 1];
+  if (activeTab) {
+    state.updatePanePty(activeTab.panes[0].id, ptyId);
+  }
 }
 
 interface Command {
@@ -63,6 +79,9 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [customPath, setCustomPath] = useState('');
+  const [sshHost, setSshHost] = useState('');
+  const [sshPort, setSshPort] = useState('22');
+  const [sshUser, setSshUser] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands: Command[] = useMemo(
@@ -84,6 +103,21 @@ export function CommandPalette() {
       { id: 'tag-ctf', label: 'Tag as CTF', action: () => { setHostTag(activeTabId, 'ctf'); toggleCommandPalette(); }, category: 'Host Tag' },
       { id: 'tag-homelab', label: 'Tag as Homelab', action: () => { setHostTag(activeTabId, 'homelab'); toggleCommandPalette(); }, category: 'Host Tag' },
       { id: 'tag-clear', label: 'Clear Host Tag', action: () => { setHostTag(activeTabId, 'unknown'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'ssh-connect', label: 'SSH to Host...', action: () => { setTab('ssh'); toggleCommandPalette(); }, category: 'SSH' },
+      { id: 'ssh-localhost', label: 'SSH to Localhost', action: () => { spawnSshTab('localhost', 22, ''); toggleCommandPalette(); }, category: 'SSH' },
+      ...SAVED_HOSTS.map((host) => ({
+        id: `ssh-${host.id}`,
+        label: `SSH to ${host.label}`,
+        action: () => {
+          if (host.host) {
+            spawnSshTab(host.host, host.port, host.user);
+          } else {
+            spawnSshTab('localhost', 22, '');
+          }
+          toggleCommandPalette();
+        },
+        category: 'SSH',
+      })),
       ...tabs.map((tab) => ({
         id: `goto-${tab.id}`,
         label: `Go to ${tab.title}`,
@@ -253,6 +287,12 @@ export function CommandPalette() {
             onClick={() => handleTabSwitch('payloads')}
           >
             Payloads
+          </button>
+          <button
+            className={`cp-tab ${tab === 'ssh' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('ssh')}
+          >
+            SSH
           </button>
         </div>
 
@@ -443,6 +483,72 @@ export function CommandPalette() {
                   </div>
                 )
               )}
+            </>
+          )}
+
+          {tab === 'ssh' && (
+            <>
+              <div className="cp-section">
+                <div className="cp-section-title">Quick Connect</div>
+                {SAVED_HOSTS.map((host, i) => (
+                  <div
+                    key={host.id}
+                    className={`command-item ${i === selectedIndex ? 'selected' : ''}`}
+                    onClick={() => {
+                      if (host.host) {
+                        spawnSshTab(host.host, host.port, host.user);
+                      } else {
+                        spawnSshTab('localhost', 22, '');
+                      }
+                      toggleCommandPalette();
+                    }}
+                    onMouseEnter={() => setSelectedIndex(i)}
+                  >
+                    <span className="command-item-label">{host.label}</span>
+                    {host.host && <code className="cp-wordlist-path">{host.user ? host.user + '@' : ''}{host.host}:{host.port}</code>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="cp-section">
+                <div className="cp-section-title">Custom Connection</div>
+                <div className="cp-vars-row">
+                  <input
+                    className="cp-var-input"
+                    placeholder="Host"
+                    value={sshHost}
+                    onChange={(e) => setSshHost(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <input
+                    className="cp-var-input"
+                    placeholder="Port"
+                    value={sshPort}
+                    onChange={(e) => setSshPort(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: '60px' }}
+                  />
+                  <input
+                    className="cp-var-input"
+                    placeholder="User"
+                    value={sshUser}
+                    onChange={(e) => setSshUser(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+                <button
+                  className="cp-ssh-connect-btn"
+                  onClick={() => {
+                    if (sshHost.trim()) {
+                      spawnSshTab(sshHost.trim(), parseInt(sshPort) || 22, sshUser.trim());
+                      toggleCommandPalette();
+                    }
+                  }}
+                  disabled={!sshHost.trim()}
+                >
+                  Connect
+                </button>
+              </div>
             </>
           )}
         </div>

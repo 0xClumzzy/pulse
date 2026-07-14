@@ -44,8 +44,39 @@ impl PtyManager {
         // Insert session BEFORE spawning reader thread to avoid race condition
         self.lock_sessions()?.insert(id.clone(), session);
 
+        self.spawn_reader_thread(app, id.clone(), reader);
+
+        log::info!("Spawned PTY session: {}", id);
+        Ok(id)
+    }
+
+    pub fn spawn_ssh(
+        &self,
+        app: AppHandle,
+        host: String,
+        port: u16,
+        user: Option<String>,
+    ) -> Result<String, String> {
+        let id = Uuid::new_v4().to_string();
+        let mut session = PtySession::new_ssh(id.clone(), host, port, user)?;
+
+        let mut reader = session.reader.take().ok_or("No reader available")?;
+
+        self.lock_sessions()?.insert(id.clone(), session);
+
+        self.spawn_reader_thread(app, id.clone(), reader);
+
+        log::info!("Spawned SSH session: {}", id);
+        Ok(id)
+    }
+
+    fn spawn_reader_thread(
+        &self,
+        app: AppHandle,
+        session_id: String,
+        mut reader: Box<dyn Read + Send>,
+    ) {
         let app_clone = app.clone();
-        let session_id = id.clone();
         let sessions_ref = Arc::clone(&self.sessions);
 
         thread::spawn(move || {
@@ -86,9 +117,6 @@ impl PtyManager {
 
             let _ = app_clone.emit("pty-exit", session_id);
         });
-
-        log::info!("Spawned PTY session: {}", id);
-        Ok(id)
     }
 
     pub fn write(&self, id: &str, data: &str) -> Result<(), String> {
@@ -139,6 +167,17 @@ fn pty_spawn(
     cwd: Option<String>,
 ) -> Result<String, String> {
     state.spawn(app, shell, cwd)
+}
+
+#[tauri::command]
+fn pty_spawn_ssh(
+    app: AppHandle,
+    state: State<'_, PtyManager>,
+    host: String,
+    port: Option<u16>,
+    user: Option<String>,
+) -> Result<String, String> {
+    state.spawn_ssh(app, host, port.unwrap_or(22), user)
 }
 
 #[tauri::command]
@@ -228,6 +267,7 @@ pub fn run() {
         .manage(HandlerManager::new())
         .invoke_handler(tauri::generate_handler![
             pty_spawn,
+            pty_spawn_ssh,
             pty_write,
             pty_resize,
             pty_close,
