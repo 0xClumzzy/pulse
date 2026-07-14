@@ -224,10 +224,24 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     });
     resizeObserver.observe(containerRef.current);
 
+    // Mouse wheel zoom (Ctrl + scroll)
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          useTerminalStore.getState().zoomIn();
+        } else {
+          useTerminalStore.getState().zoomOut();
+        }
+      }
+    };
+    containerRef.current.addEventListener('wheel', handleWheel, { passive: false });
+
     return () => {
       isUnmounted = true;
       resizeObserver.disconnect();
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      containerRef.current?.removeEventListener('wheel', handleWheel);
       // Clean up Tauri event listeners
       unlistenRefs.current.forEach((unlisten) => unlisten());
       unlistenRefs.current = [];

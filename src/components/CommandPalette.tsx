@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTerminalStore, type PayloadEncodeMode, type PaletteTab } from '../store/terminal';
+import type { HostEnvironment } from '../types/terminal';
 import { PAYLOADS, WORDLISTS, type Payload } from './PayloadPalette';
 
 const LISTENERS = [
@@ -27,6 +28,14 @@ function substituteVars(s: string, lhost: string, lport: string, target: string)
     .replace(/\{TARGET\}/g, target || 'example.com');
 }
 
+interface Command {
+  id: string;
+  label: string;
+  shortcut?: string;
+  action: () => void;
+  category?: string;
+}
+
 export function CommandPalette() {
   const commandPaletteOpen = useTerminalStore((s) => s.commandPaletteOpen);
   const toggleCommandPalette = useTerminalStore((s) => s.toggleCommandPalette);
@@ -39,6 +48,7 @@ export function CommandPalette() {
   const splitPane = useTerminalStore((s) => s.splitPane);
   const activePaneId = useTerminalStore((s) => s.activePaneId);
   const tabs = useTerminalStore((s) => s.tabs);
+  const setHostTag = useTerminalStore((s) => s.setHostTag);
   const payloadEncodeMode = useTerminalStore((s) => s.payloadEncodeMode);
   const setPayloadEncodeMode = useTerminalStore((s) => s.setPayloadEncodeMode);
   const writeToActiveTerminal = useTerminalStore((s) => s.writeToActiveTerminal);
@@ -55,7 +65,7 @@ export function CommandPalette() {
   const [customPath, setCustomPath] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const commands: { id: string; label: string; shortcut?: string; action: () => void; category?: string }[] = useMemo(
+  const commands: Command[] = useMemo(
     () => [
       { id: 'new-tab', label: 'New Tab', shortcut: 'Ctrl+Shift+T', action: () => { addTab(); toggleCommandPalette(); }, category: 'Tabs' },
       { id: 'close-tab', label: 'Close Tab', shortcut: 'Ctrl+Shift+W', action: () => { closeTab(activeTabId); toggleCommandPalette(); }, category: 'Tabs' },
@@ -68,6 +78,12 @@ export function CommandPalette() {
       { id: 'zoom-in', label: 'Zoom In', shortcut: 'Ctrl++', action: () => { useTerminalStore.getState().zoomIn(); toggleCommandPalette(); }, category: 'View' },
       { id: 'zoom-out', label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => { useTerminalStore.getState().zoomOut(); toggleCommandPalette(); }, category: 'View' },
       { id: 'zoom-reset', label: 'Reset Zoom', shortcut: 'Ctrl+0', action: () => { useTerminalStore.getState().zoomReset(); toggleCommandPalette(); }, category: 'View' },
+      { id: 'tag-prod', label: 'Tag as Production', action: () => { setHostTag(activeTabId, 'prod'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'tag-staging', label: 'Tag as Staging', action: () => { setHostTag(activeTabId, 'staging'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'tag-dev', label: 'Tag as Development', action: () => { setHostTag(activeTabId, 'dev'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'tag-ctf', label: 'Tag as CTF', action: () => { setHostTag(activeTabId, 'ctf'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'tag-homelab', label: 'Tag as Homelab', action: () => { setHostTag(activeTabId, 'homelab'); toggleCommandPalette(); }, category: 'Host Tag' },
+      { id: 'tag-clear', label: 'Clear Host Tag', action: () => { setHostTag(activeTabId, 'unknown'); toggleCommandPalette(); }, category: 'Host Tag' },
       ...tabs.map((tab) => ({
         id: `goto-${tab.id}`,
         label: `Go to ${tab.title}`,
@@ -78,7 +94,7 @@ export function CommandPalette() {
         category: 'Navigate',
       })),
     ],
-    [addTab, closeTab, activeTabId, toggleSettings, toggleRecon, splitPane, activePaneId, tabs, toggleCommandPalette]
+    [addTab, closeTab, activeTabId, toggleSettings, toggleRecon, splitPane, activePaneId, tabs, toggleCommandPalette, setHostTag]
   );
 
   const filteredPayloads = useMemo(() => {

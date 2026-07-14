@@ -197,6 +197,13 @@ function App() {
         useTerminalStore.getState().setActiveTab(tabsRef.current[index].id);
       }
     }
+    // Handle Ctrl+Alt+Space to switch to next tab
+    else if (e.ctrlKey && e.altKey && e.key === ' ') {
+      e.preventDefault();
+      const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
+      const next = (current + 1) % tabsRef.current.length;
+      useTerminalStore.getState().setActiveTab(tabsRef.current[next].id);
+    }
     // Handle zoom shortcuts
     else if (matchesKeybinding(e, bindings.zoomIn)) {
       e.preventDefault();

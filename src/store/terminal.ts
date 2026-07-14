@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Theme, ReconSummary } from '../types/theme';
-import type { Tab, Pane, TerminalState, ReconEntry, HostFingerprint, HostKeyAlert } from '../types/terminal';
+import type { Tab, Pane, TerminalState, ReconEntry, HostFingerprint, HostKeyAlert, HostTag, HostEnvironment } from '../types/terminal';
 import { catppuccinMocha } from '../themes/catppuccin-mocha';
 
 let tabCounter = 0;
@@ -165,6 +165,7 @@ interface TerminalStore extends TerminalState {
   hostKeys: HostFingerprint[];
   hostKeyAlerts: HostKeyAlert[];
   clipboardAllowed: Record<string, boolean>;
+  hostTags: Record<string, HostTag>;
   payloadEncodeMode: PayloadEncodeMode;
   commandPaletteInitialTab: PaletteTab;
   lhost: string;
@@ -184,6 +185,7 @@ interface TerminalStore extends TerminalState {
   closePane: (paneId: string) => void;
   updateTabTitle: (tabId: string, title: string) => void;
   updatePanePty: (paneId: string, ptyId: string) => void;
+  setHostTag: (tabId: string, environment: HostEnvironment) => void;
   toggleSettings: () => void;
   toggleCommandPalette: () => void;
   openCommandPalette: (tab: PaletteTab) => void;
@@ -251,6 +253,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   hostKeys: [],
   hostKeyAlerts: [],
   clipboardAllowed: {},
+  hostTags: {},
   payloadEncodeMode: 'none',
   commandPaletteInitialTab: 'commands',
   lhost: '',
@@ -402,6 +405,21 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       }
       return state;
     });
+  },
+
+  setHostTag: (tabId, environment) => {
+    const tagMap: Record<HostEnvironment, { color: string; label: string }> = {
+      prod: { color: '#f38ba8', label: 'PROD' },
+      staging: { color: '#fab387', label: 'STAGE' },
+      dev: { color: '#a6e3a1', label: 'DEV' },
+      ctf: { color: '#cba6f7', label: 'CTF' },
+      homelab: { color: '#89dceb', label: 'HOME' },
+      unknown: { color: '#6c7086', label: '' },
+    };
+    const tag: HostTag = { environment, ...tagMap[environment] };
+    set((state) => ({
+      hostTags: { ...state.hostTags, [tabId]: tag },
+    }));
   },
 
   toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),

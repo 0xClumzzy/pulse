@@ -2,6 +2,7 @@ export interface Tab {
   id: string;
   title: string;
   panes: Pane[];
+  hostTag?: HostTag;
 }
 
 export interface Pane {
