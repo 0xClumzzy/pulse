@@ -35,13 +35,9 @@ impl PtyManager {
         cwd: Option<String>,
     ) -> Result<String, String> {
         let id = Uuid::new_v4().to_string();
-        let session = PtySession::new(id.clone(), shell, cwd)?;
+        let mut session = PtySession::new(id.clone(), shell, cwd)?;
 
         let mut reader = session.reader.take().ok_or("No reader available")?;
-
-        // Get a reference to child and master before moving session into HashMap
-        let child_ref = Arc::new(Mutex::new(None));
-        let master_ref = Arc::new(Mutex::new(None));
 
         // Insert session BEFORE spawning reader thread to avoid race condition
         self.lock_sessions()?.insert(id.clone(), session);
@@ -49,7 +45,7 @@ impl PtyManager {
         // Now extract child and master references from the session we just inserted
         {
             let sessions = self.lock_sessions()?;
-            if let Some(sess) = sessions.get(&id) {
+            if let Some(_sess) = sessions.get(&id) {
                 // Store weak references for the read loop to use when signaling termination
                 // This allows us to signal the reader thread when the session is killed
             }
