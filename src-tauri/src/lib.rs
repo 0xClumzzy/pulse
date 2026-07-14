@@ -7,7 +7,9 @@ use uuid::Uuid;
 use log;
 
 mod terminal;
+mod handler;
 use terminal::{PtyEvent, PtySession};
+use handler::{HandlerManager, HandlerInfo};
 
 pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, PtySession>>>,
@@ -42,15 +44,6 @@ impl PtyManager {
         // Insert session BEFORE spawning reader thread to avoid race condition
         self.lock_sessions()?.insert(id.clone(), session);
 
-        // Now extract child and master references from the session we just inserted
-        {
-            let sessions = self.lock_sessions()?;
-            if let Some(_sess) = sessions.get(&id) {
-                // Store weak references for the read loop to use when signaling termination
-                // This allows us to signal the reader thread when the session is killed
-            }
-        }
-
         let app_clone = app.clone();
         let session_id = id.clone();
         let sessions_ref = Arc::clone(&self.sessions);
@@ -65,7 +58,6 @@ impl PtyManager {
                     }
                     Ok(n) => {
                         let data = String::from_utf8_lossy(&buf[..n]).to_string();
-                        // Log if invalid UTF-8 was encountered
                         if data.contains('\u{FFFD}') {
                             log::warn!("PTY session {} contained invalid UTF-8 sequences", session_id);
                         }
@@ -87,7 +79,6 @@ impl PtyManager {
                 }
             }
 
-            // Clean up session from HashMap on natural exit
             if let Ok(mut sessions) = sessions_ref.lock() {
                 sessions.remove(&session_id);
                 log::debug!("Cleaned up PTY session {}", session_id);
@@ -101,13 +92,11 @@ impl PtyManager {
     }
 
     pub fn write(&self, id: &str, data: &str) -> Result<(), String> {
-        // Clone the writer Arc to release the sessions lock before doing I/O
         let writer = {
             let sessions = self.lock_sessions()?;
             let session = sessions.get(id).ok_or("Session not found")?;
             Arc::clone(&session.writer)
         };
-        // Now write without holding the sessions lock
         let mut writer = writer
             .lock()
             .map_err(|e| format!("Failed to lock writer: {}", e))?;
@@ -130,11 +119,7 @@ impl PtyManager {
         let mut sessions = self.lock_sessions()?;
         let mut session = sessions.remove(id).ok_or("Session not found")?;
         
-        // Kill the child process - this will cause the reader thread to get EOF
         session.kill();
-        
-        // Explicitly drop the session to close the PTY master
-        // This ensures all PTY file descriptors are closed
         drop(session);
         
         log::info!("Closed PTY session: {}", id);
@@ -182,6 +167,26 @@ fn pty_list(state: State<'_, PtyManager>) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn handler_start(state: State<'_, HandlerManager>, port: u16) -> Result<HandlerInfo, String> {
+    state.start_handler(port)
+}
+
+#[tauri::command]
+fn handler_stop(state: State<'_, HandlerManager>, id: String) -> Result<(), String> {
+    state.stop_handler(&id)
+}
+
+#[tauri::command]
+fn handler_list(state: State<'_, HandlerManager>) -> Vec<HandlerInfo> {
+    state.list_handlers()
+}
+
+#[tauri::command]
+fn handler_remove(state: State<'_, HandlerManager>, id: String) -> Result<(), String> {
+    state.remove_handler(&id)
+}
+
+#[tauri::command]
 fn get_config_path() -> String {
     dirs::config_dir()
         .map(|p| p.join("pulse").to_string_lossy().to_string())
@@ -220,12 +225,17 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
         .manage(PtyManager::new())
+        .manage(HandlerManager::new())
         .invoke_handler(tauri::generate_handler![
             pty_spawn,
             pty_write,
             pty_resize,
             pty_close,
             pty_list,
+            handler_start,
+            handler_stop,
+            handler_list,
+            handler_remove,
             get_config_path,
             save_config,
             load_config,

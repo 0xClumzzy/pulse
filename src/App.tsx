@@ -5,6 +5,9 @@ import SplitPane from './components/SplitPane';
 import { SearchBar } from './components/SearchBar';
 import { CommandPalette } from './components/CommandPalette';
 import { Settings } from './components/Settings';
+import { ReconSidebar } from './components/ReconSidebar';
+import { PayloadPalette } from './components/PayloadPalette';
+import { HandlerPanel } from './components/HandlerPanel';
 import { useTerminalStore } from './store/terminal';
 import { SearchAddon } from '@xterm/addon-search';
 import './App.css';
@@ -61,6 +64,10 @@ function App() {
   const tabs = useTerminalStore((s) => s.tabs);
   const activeTabId = useTerminalStore((s) => s.activeTabId);
   const activePaneId = useTerminalStore((s) => s.activePaneId);
+  const payloadPaletteOpen = useTerminalStore((s) => s.payloadPaletteOpen);
+  const togglePayloadPalette = useTerminalStore((s) => s.togglePayloadPalette);
+  const writeToActiveTerminal = useTerminalStore((s) => s.writeToActiveTerminal);
+  const toggleRecon = useTerminalStore((s) => s.toggleRecon);
 
   const searchAddon = useRef<SearchAddon | null>(null);
 
@@ -106,6 +113,10 @@ function App() {
   const handleFocus = useCallback((id: string) => {
     useTerminalStore.getState().setActivePane(id);
   }, []);
+
+  const handlePayloadSelect = useCallback((payload: string) => {
+    writeToActiveTerminal(payload);
+  }, [writeToActiveTerminal]);
 
   // Keyboard shortcuts
   const activeTabIdRef = useRef(activeTabId);
@@ -199,7 +210,16 @@ function App() {
       e.preventDefault();
       useTerminalStore.getState().zoomReset();
     }
-  }, []);
+    // Security features
+    else if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+      e.preventDefault();
+      toggleRecon();
+    }
+    else if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+      e.preventDefault();
+      togglePayloadPalette();
+    }
+  }, [toggleRecon, togglePayloadPalette]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -233,9 +253,17 @@ function App() {
           </div>
         ))}
         <SearchBar searchAddon={searchAddon} />
+        <ReconSidebar />
+        <HandlerPanel />
       </div>
       <CommandPalette />
       <Settings />
+      {payloadPaletteOpen && (
+        <PayloadPalette
+          onSelect={handlePayloadSelect}
+          onClose={togglePayloadPalette}
+        />
+      )}
     </div>
   );
 }

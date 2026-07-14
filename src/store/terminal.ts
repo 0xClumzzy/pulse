@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import type { Theme } from '../types/theme';
-import type { Tab, Pane, TerminalState } from '../types/terminal';
+import type { Theme, ReconSummary } from '../types/theme';
+import type { Tab, Pane, TerminalState, ReconEntry, HostFingerprint, HostKeyAlert } from '../types/terminal';
 import { catppuccinMocha } from '../themes/catppuccin-mocha';
 
 let tabCounter = 0;
@@ -121,9 +121,57 @@ const updatePanePtyInTree = (panes: Pane[], paneId: string, ptyId: string): bool
   return false;
 };
 
+export type PayloadEncodeMode = 'none' | 'base64' | 'url';
+export type PaletteTab = 'commands' | 'payloads';
+
+export interface HandlerInfo {
+  id: string;
+  port: number;
+  status: string;
+  connections: ConnectionInfo[];
+}
+
+export interface ConnectionInfo {
+  id: string;
+  remote_addr: string;
+  connected_at: string;
+  status: string;
+}
+
+export function getActivePtyId(state: TerminalStore): string | null {
+  const tab = state.tabs.find((t) => t.id === state.activeTabId);
+  if (!tab) return null;
+  const findPane = (panes: Pane[], id: string): Pane | null => {
+    for (const p of panes) {
+      if (p.id === id) return p;
+      if (p.children) {
+        const found = findPane(p.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  const pane = findPane(tab.panes, state.activePaneId);
+  return pane?.ptyId || null;
+}
+
 interface TerminalStore extends TerminalState {
   theme: Theme;
   cosmicText: boolean;
+  reconOpen: boolean;
+  reconSummary: ReconSummary;
+  reconEntries: ReconEntry[];
+  hostKeys: HostFingerprint[];
+  hostKeyAlerts: HostKeyAlert[];
+  clipboardAllowed: Record<string, boolean>;
+  payloadEncodeMode: PayloadEncodeMode;
+  commandPaletteInitialTab: PaletteTab;
+  lhost: string;
+  lport: string;
+  target: string;
+  payloadPaletteOpen: boolean;
+  handlerOpen: boolean;
+  handlers: HandlerInfo[];
   initTheme: () => Promise<void>;
   setTheme: (theme: Theme) => void;
   toggleCosmicText: () => void;
@@ -137,11 +185,30 @@ interface TerminalStore extends TerminalState {
   updatePanePty: (paneId: string, ptyId: string) => void;
   toggleSettings: () => void;
   toggleCommandPalette: () => void;
+  openCommandPalette: (tab: PaletteTab) => void;
   toggleSearch: () => void;
+  toggleRecon: () => void;
+  togglePayloadPalette: () => void;
+  toggleHandler: () => void;
+  toggleClipboard: (ptyId: string) => void;
   movePane: (direction: 'left' | 'right' | 'up' | 'down') => void;
   zoomIn: () => void;
   zoomOut: () => void;
   zoomReset: () => void;
+  refreshRecon: () => Promise<void>;
+  addReconEntries: (entries: ReconEntry[]) => void;
+  addHostKeyAlert: (alert: HostKeyAlert) => void;
+  refreshHostKeys: () => Promise<void>;
+  clearRecon: () => void;
+  setPayloadEncodeMode: (mode: PayloadEncodeMode) => void;
+  setLhost: (val: string) => void;
+  setLport: (val: string) => void;
+  setTarget: (val: string) => void;
+  writeToActiveTerminal: (data: string) => void;
+  startHandler: (port: number) => Promise<void>;
+  stopHandler: (id: string) => Promise<void>;
+  removeHandler: (id: string) => Promise<void>;
+  refreshHandlers: () => Promise<void>;
 }
 
 const getSavedTheme = async (): Promise<Theme> => {
@@ -167,8 +234,27 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   settingsOpen: false,
   commandPaletteOpen: false,
   searchOpen: false,
+  reconOpen: false,
+  payloadPaletteOpen: false,
+  handlerOpen: false,
+  handlers: [],
   theme: initialTheme,
   cosmicText: false,
+  reconSummary: {
+    credentials_found: 0,
+    commands_executed: 0,
+    connections_opened: 0,
+    total_sessions: 0,
+  },
+  reconEntries: [],
+  hostKeys: [],
+  hostKeyAlerts: [],
+  clipboardAllowed: {},
+  payloadEncodeMode: 'none',
+  commandPaletteInitialTab: 'commands',
+  lhost: '',
+  lport: '',
+  target: '',
 
   initTheme: async () => {
     const saved = await getSavedTheme();
@@ -256,14 +342,22 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   closePane: (paneId) => {
     const state = get();
-    const tabIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
+    const findPaneInTab = (panes: Pane[], targetId: string): boolean => {
+      for (const pane of panes) {
+        if (pane.id === targetId) return true;
+        if (pane.children && findPaneInTab(pane.children, targetId)) return true;
+      }
+      return false;
+    };
+
+    const tabIndex = state.tabs.findIndex((t) => findPaneInTab(t.panes, paneId));
     if (tabIndex === -1) return;
 
     const tab = state.tabs[tabIndex];
     const leafPanes = getLeafPanes(tab.panes[0]);
 
     if (leafPanes.length <= 1) {
-      get().closeTab(state.activeTabId);
+      get().closeTab(tab.id);
       return;
     }
 
@@ -279,9 +373,13 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       newTabs[tabIndex] = { ...tab, panes: panesCopy };
       const newLeafPanes = getLeafPanes(panesCopy[0]);
 
+      const newActivePaneId = newLeafPanes[0]?.id || state.activePaneId;
+      const newActiveTabId = newTabs[newTabs.length - 1]?.id || state.activeTabId;
+
       set({
         tabs: newTabs,
-        activePaneId: newLeafPanes[0]?.id || state.activePaneId,
+        activeTabId: tab.id === state.activeTabId ? newActiveTabId : state.activeTabId,
+        activePaneId: state.activePaneId === paneId ? newActivePaneId : state.activePaneId,
       });
     }
   },
@@ -313,7 +411,43 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),
   toggleCommandPalette: () =>
     set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+  openCommandPalette: (tab) =>
+    set({ commandPaletteOpen: true, commandPaletteInitialTab: tab }),
   toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
+  toggleRecon: () => set((state) => ({ reconOpen: !state.reconOpen })),
+  togglePayloadPalette: () => set((state) => ({ payloadPaletteOpen: !state.payloadPaletteOpen })),
+
+  toggleClipboard: (ptyId) =>
+    set((state) => ({
+      clipboardAllowed: {
+        ...state.clipboardAllowed,
+        [ptyId]: !state.clipboardAllowed[ptyId],
+      },
+    })),
+
+  addReconEntries: (entries) =>
+    set((state) => ({
+      reconEntries: [...state.reconEntries, ...entries].slice(-500),
+    })),
+
+  addHostKeyAlert: (alert) =>
+    set((state) => ({
+      hostKeyAlerts: [...state.hostKeyAlerts, alert],
+    })),
+
+  refreshHostKeys: async () => {
+    try {
+      const keys = await invoke<HostFingerprint[]>('get_host_keys');
+      set({ hostKeys: keys });
+    } catch (e) {
+      console.error('Failed to refresh host keys:', e);
+    }
+  },
+
+  clearRecon: () => {
+    invoke('clear_recon').catch(() => {});
+    set({ reconEntries: [] });
+  },
 
   movePane: (direction) => {
     set((state) => {
@@ -367,5 +501,86 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       console.error('Failed to save theme:', e)
     );
     set({ theme: newTheme });
+  },
+
+  refreshRecon: async () => {
+    try {
+      const summary = await invoke<ReconSummary>('get_recon_summary');
+      set({ reconSummary: summary });
+    } catch (e) {
+      console.error('Failed to refresh recon:', e);
+    }
+  },
+
+  setPayloadEncodeMode: (mode) => set({ payloadEncodeMode: mode }),
+  setLhost: (val) => set({ lhost: val }),
+  setLport: (val) => set({ lport: val }),
+  setTarget: (val) => set({ target: val }),
+
+  toggleHandler: () => set((state) => ({ handlerOpen: !state.handlerOpen })),
+
+  startHandler: async (port) => {
+    try {
+      const info = await invoke<HandlerInfo>('handler_start', { port });
+      set((state) => ({ handlers: [...state.handlers, info] }));
+    } catch (e) {
+      console.error('Failed to start handler:', e);
+    }
+  },
+
+  stopHandler: async (id) => {
+    try {
+      await invoke('handler_stop', { id });
+      set((state) => ({
+        handlers: state.handlers.map((h) =>
+          h.id === id ? { ...h, status: 'stopped' } : h
+        ),
+      }));
+    } catch (e) {
+      console.error('Failed to stop handler:', e);
+    }
+  },
+
+  removeHandler: async (id) => {
+    try {
+      await invoke('handler_remove', { id });
+      set((state) => ({
+        handlers: state.handlers.filter((h) => h.id !== id),
+      }));
+    } catch (e) {
+      console.error('Failed to remove handler:', e);
+    }
+  },
+
+  refreshHandlers: async () => {
+    try {
+      const handlers = await invoke<HandlerInfo[]>('handler_list');
+      set({ handlers });
+    } catch (e) {
+      console.error('Failed to refresh handlers:', e);
+    }
+  },
+
+  writeToActiveTerminal: (data) => {
+    const state = get();
+    const ptyId = getActivePtyId(state);
+    if (!ptyId) return;
+    let payload = data;
+    if (state.payloadEncodeMode === 'base64') {
+      try {
+        payload = btoa(data);
+      } catch {
+        payload = data;
+      }
+    } else if (state.payloadEncodeMode === 'url') {
+      try {
+        payload = encodeURIComponent(data);
+      } catch {
+        payload = data;
+      }
+    }
+    invoke('pty_write', { id: ptyId, data: payload }).catch((e: unknown) =>
+      console.warn('Failed to write to terminal:', e)
+    );
   },
 }));

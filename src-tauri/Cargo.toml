@@ -1,6 +1,6 @@
 [package]
 name = "pulse"
-version = "0.1.0"
+version = "1.0.0"
 description = "A blazing fast terminal emulator with glass aesthetics"
 authors = ["0xClumzzy"]
 license = "MIT"

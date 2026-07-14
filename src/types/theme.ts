@@ -109,6 +109,13 @@ export interface Keybindings {
   zoomReset: string;
 }
 
+export interface ReconSummary {
+  credentials_found: number;
+  commands_executed: number;
+  connections_opened: number;
+  total_sessions: number;
+}
+
 export interface Theme {
   metadata: ThemeMetadata;
   palette: Palette;
