@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Theme, ReconSummary } from '../types/theme';
 import type { Tab, Pane, TerminalState, ReconEntry, HostFingerprint, HostKeyAlert } from '../types/terminal';
 import { catppuccinMocha } from '../themes/catppuccin-mocha';
@@ -288,12 +289,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
     const newTabs = state.tabs.filter((t) => t.id !== id);
     if (newTabs.length === 0) {
-      const newTab = createTab();
-      set({
-        tabs: [newTab],
-        activeTabId: newTab.id,
-        activePaneId: newTab.panes[0].id,
-      });
+      getCurrentWindow().close();
       return;
     }
     const activeIndex = state.tabs.findIndex((t) => t.id === id);

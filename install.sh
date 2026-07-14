@@ -17,14 +17,19 @@ NC='\033[0m'
 
 print_banner() {
     echo -e "${BLUE}"
-    echo "  ____             _   ____  "
-    echo " |  _ \ __ _ _   _| | |  _ \ "
-    echo " | |_) / _\` | | | | | | | |"
-    echo " |  __/ (_| | |_| | | |_| |"
-    echo " |_|   \__,_|\__,_|_|____/ "
-    echo ""
+    echo "  ╔══════════════════════════════════════╗"
+    echo "  ║  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄  ║"
+    echo "  ║  █  ▄▄▄█ ▄▄▄█▀▀▀█ ▀▄▄▄▀ █▄▄▄█  █  ║"
+    echo "  ║  █▄▄  █ █▄▄ █▄▄▄▀ ▄▄▄▀▄ █▄▄▄█  █  ║"
+    echo "  ║  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ║"
+    echo "  ║                                      ║"
+    echo "  ║   P U L S E   v1.0                   ║"
+    echo "  ║   Terminal Emulator                  ║"
+    echo "  ║                                      ║"
+    echo "  ╠══════════════════════════════════════╣"
+    echo "  ║   @github.com/0xClumzzy             ║"
+    echo "  ╚══════════════════════════════════════╝"
     echo -e "${NC}"
-    echo -e "  A blazing fast terminal emulator with glass aesthetics"
     echo ""
 }
 
