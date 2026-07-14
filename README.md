@@ -50,9 +50,10 @@
 - **Live preview** - See changes before applying
 
 ## Screenshots
+<img width="1810" height="991" alt="image" src="https://github.com/user-attachments/assets/50c0ff11-7dd1-4bf1-ad1a-83c0a8e8585e" />
 
 <p align="center">
-  <em>Dark mode with Catppuccin Mocha theme</em>
+  <em>Dark mode with Gruvbox Dark theme</em>
 </p>
 
 
@@ -187,6 +188,7 @@ Quick access to common payloads:
 - **Encoding** - Base64, URL encode/decode
 - **Enumeration** - Nmap, Gobuster, Feroxbuster, Subfinder, Nikto
 - **Privilege Escalation** - LinPEAS, LinEnum, SUID finder
+<img width="1790" height="994" alt="image" src="https://github.com/user-attachments/assets/6c17bedc-2765-429a-ae1e-cf952210241a" />
 
 ### Built-in Handler
 Start a TCP listener directly in Pulse:
@@ -201,6 +203,7 @@ Integrated wordlist paths:
 - DirBuster
 - Raft (Small/Medium/Large)
 - WFuzz
+<img width="1697" height="847" alt="image" src="https://github.com/user-attachments/assets/c9c7042b-8d11-4609-8b12-7980b61c8af8" />
 
 ## Themes
 
@@ -212,6 +215,7 @@ Integrated wordlist paths:
 | Tokyo Night | Dark | `#1a1b26` background |
 | Nord | Dark | `#2e3440` background |
 | Gruvbox Dark | Dark | `#282828` background |
+<img width="840" height="922" alt="image" src="https://github.com/user-attachments/assets/417623c8-4e8a-4067-a859-1fd9dd3e60f4" />
 
 See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 
