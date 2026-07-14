@@ -58,9 +58,8 @@ Pulse uses Terminator-compatible keybindings by default. All shortcuts can be cu
 | Search Previous | `Ctrl+Shift+G` | Find previous match |
 | Command Palette | `Ctrl+Shift+P` | Open command palette |
 | Settings | `Ctrl+Shift+,` | Open settings panel |
-| Reload Config | `Ctrl+Shift+R` | Reload configuration |
-| Toggle Sidebar | `Ctrl+Shift+B` | Show/hide sidebar |
-| Toggle Fullscreen | `F11` | Toggle fullscreen mode |
+| Toggle Recon Sidebar | `Ctrl+Shift+R` | Show/hide recon sidebar |
+| Toggle Handler Panel | via Command Palette | Show/hide reverse shell handler |
 
 ## Zoom
 

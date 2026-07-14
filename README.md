@@ -34,6 +34,15 @@
 - **120fps animations** - GPU-composited transitions
 - **Low memory** - Tauri's minimal footprint
 
+### Security Tools
+- **Recon Sidebar** - Auto-extracts CVEs, ports, URLs, hostnames, JWTs, base64, credentials
+- **Payload Palette** - Reverse shells, LFI/SSTI, encoding, enumeration, privesc payloads
+- **Built-in Reverse Shell Handler** - TCP listener with connection management
+- **Wordlist Integration** - RockYou, SecLists, DirBuster, Raft, WFuzz, and more
+- **Variable Substitution** - LHOST/LPORT/TARGET placeholders auto-filled
+- **Encoding Modes** - Raw, Base64, URL encoding on paste
+- **Host Tagging** - Mark tabs as prod/staging/dev/ctf/homelab
+
 ### Customization
 - **6 built-in themes** - Catppuccin, Dracula, Tokyo Night, Nord, Gruvbox
 - **Full theme editor** - Colors, fonts, glass effects
@@ -69,13 +78,13 @@ sudo apt install curl git nodejs npm rustc cargo build-essential libwebkit2gtk-4
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 
 # Option 2: Binary download
-wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-x86_64
-chmod +x pulse-x86_64
-sudo mv pulse-x86_64 /usr/local/bin/pulse
+wget https://github.com/0xClumzzy/pulse/releases/download/v1.0.0/pulse
+chmod +x pulse
+sudo mv pulse /usr/local/bin/pulse
 
 # Option 3: .deb package
-wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse_0.1.0_amd64.deb
-sudo dpkg -i pulse_0.1.0_amd64.deb
+wget https://github.com/0xClumzzy/pulse/releases/download/v1.0.0/Pulse_1.0.0_amd64.deb
+sudo dpkg -i Pulse_1.0.0_amd64.deb
 ```
 
 ### Fedora / RHEL
@@ -88,13 +97,13 @@ sudo dnf install curl git nodejs npm rust cargo webkit2gtk4.1-devel gtk3-devel l
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/pulse/main/install.sh | bash
 
 # Option 2: Binary download
-wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-x86_64
-chmod +x pulse-x86_64
-sudo mv pulse-x86_64 /usr/local/bin/pulse
+wget https://github.com/0xClumzzy/pulse/releases/download/v1.0.0/pulse
+chmod +x pulse
+sudo mv pulse /usr/local/bin/pulse
 
 # Option 3: .rpm package
-wget https://github.com/0xClumzzy/pulse/releases/download/v0.1.0/pulse-0.1.0-1.x86_64.rpm
-sudo rpm -i pulse-0.1.0-1.x86_64.rpm
+wget https://github.com/0xClumzzy/pulse/releases/download/v1.0.0/Pulse-1.0.0-1.x86_64.rpm
+sudo rpm -i Pulse-1.0.0-1.x86_64.rpm
 ```
 
 ### Other Distros
@@ -116,6 +125,7 @@ rm ~/.local/bin/pulse
 | [Keybindings](docs/KEYBINDINGS.md) | Complete keyboard shortcut reference |
 | [Themes](docs/THEMES.md) | Theme system and custom themes |
 | [Configuration](docs/CONFIGURATION.md) | All configuration options |
+| [Security Tools](docs/SECURITY.md) | Recon, payloads, and handler usage |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 
 ## Keyboard Shortcuts
@@ -138,6 +148,12 @@ rm ~/.local/bin/pulse
 | Navigate Panes | `Ctrl+Shift+Arrow` |
 | Resize Panes | `Ctrl+Shift+Alt+Arrow` |
 
+### Security
+| Action | Shortcut |
+|--------|----------|
+| Toggle Recon Sidebar | `Ctrl+Shift+R` |
+| Open Payload Palette | `Ctrl+Shift+P` |
+
 ### General
 | Action | Shortcut |
 |--------|----------|
@@ -151,6 +167,40 @@ rm ~/.local/bin/pulse
 | Reset Zoom | `Ctrl+0` |
 
 See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for all shortcuts.
+
+## Security Tools
+
+### Recon Sidebar
+Automatically extracts security-relevant data from terminal output:
+- CVEs and vulnerabilities
+- Open ports and services
+- URLs and endpoints
+- Hostnames and IPs
+- JWTs and tokens
+- Base64 encoded strings
+- Credentials and secrets
+
+### Payload Palette
+Quick access to common payloads:
+- **Reverse Shells** - Bash, Python, Perl, Netcat, PHP, Ruby, Groovy, PowerShell
+- **LFI/SSTI** - Path traversal, template injection
+- **Encoding** - Base64, URL encode/decode
+- **Enumeration** - Nmap, Gobuster, Feroxbuster, Subfinder, Nikto
+- **Privilege Escalation** - LinPEAS, LinEnum, SUID finder
+
+### Built-in Handler
+Start a TCP listener directly in Pulse:
+- Listen on any port for incoming reverse shells
+- View active connections
+- Stop/remove handlers
+
+### Wordlists
+Integrated wordlist paths:
+- RockYou
+- SecLists (Web-Content, Subdomains, Names, Passwords, API Endpoints)
+- DirBuster
+- Raft (Small/Medium/Large)
+- WFuzz
 
 ## Themes
 
@@ -171,7 +221,7 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 - [Rust](https://www.rust-lang.org/) - Systems language
 - [React](https://react.dev/) - UI library
 - [xterm.js](https://xtermjs.org/) - Terminal emulator
-- [Framer Motion](https://www.framer.com/motion/) - Animations
+- [Zustand](https://zustand-demo.pmnd.rs/) - State management
 
 ## Roadmap
 
@@ -180,6 +230,8 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 - [ ] Session persistence
 - [ ] Custom shaders
 - [ ] Plugin system
+- [ ] Screenshot/recording
+- [ ] Multi-monitor support
 
 ## License
 
