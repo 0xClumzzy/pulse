@@ -139,7 +139,6 @@ rm ~/.local/bin/pulse
 | Next Tab | `Ctrl+PageDown` |
 | Previous Tab | `Ctrl+PageUp` |
 | Go to Tab 1-9 | `Ctrl+Alt+1-9` |
-| Cycle Tabs | `Ctrl+Alt+Space` |
 
 ### Split Panes
 | Action | Shortcut |
@@ -167,7 +166,6 @@ rm ~/.local/bin/pulse
 | Zoom In | `Ctrl++` |
 | Zoom Out | `Ctrl+-` |
 | Reset Zoom | `Ctrl+0` |
-| Mouse Zoom | `Ctrl+Scroll` |
 
 See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for all shortcuts.
 
@@ -207,32 +205,6 @@ Integrated wordlist paths:
 - WFuzz
 <img width="1697" height="847" alt="image" src="https://github.com/user-attachments/assets/c9c7042b-8d11-4609-8b12-7980b61c8af8" />
 
-### Host Tagging
-Mark tabs with environment labels for quick visual identification:
-- **PROD** - Production environments (red)
-- **STAGE** - Staging environments (orange)
-- **DEV** - Development environments (green)
-- **CTF** - Capture The Flag labs (purple)
-- **HOME** - Homelab environments (cyan)
-
-Open the Command Palette (`Ctrl+Shift+P`) and search for "Tag" to assign a tag to the current tab. Tagged tabs display a colored border and label.
-
-### SSH Integration
-Connect to remote hosts directly from Pulse:
-- Open the Command Palette (`Ctrl+Shift+P`) and click the **SSH** tab
-- Enter host, port, and optional username
-- Quick connect to saved hosts or type custom connections
-- SSH sessions open in new tabs with automatic key checking disabled
-
-### Click-to-Open URLs
-URLs detected in terminal output are automatically clickable. Click any URL to open it in your default browser.
-
-### Pane Titles
-Split panes display the current command or hostname in a title bar above the terminal output.
-
-### Activity Badges
-Tabs with background activity show a pulsing teal badge to notify you of output.
-
 ## Themes
 
 | Theme | Variant | Preview |
@@ -258,7 +230,7 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 ## Roadmap
 
 - [ ] Sixel graphics support
-- [x] SSH integration
+- [ ] SSH integration
 - [ ] Session persistence
 - [ ] Custom shaders
 - [ ] Plugin system

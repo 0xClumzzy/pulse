@@ -123,7 +123,7 @@ const updatePanePtyInTree = (panes: Pane[], paneId: string, ptyId: string): bool
 };
 
 export type PayloadEncodeMode = 'none' | 'base64' | 'url';
-export type PaletteTab = 'commands' | 'payloads' | 'ssh';
+export type PaletteTab = 'commands' | 'payloads';
 
 export interface HandlerInfo {
   id: string;
@@ -184,10 +184,8 @@ interface TerminalStore extends TerminalState {
   splitPane: (paneId: string, direction: 'horizontal' | 'vertical') => void;
   closePane: (paneId: string) => void;
   updateTabTitle: (tabId: string, title: string) => void;
-  updatePaneTitle: (paneId: string, title: string) => void;
   updatePanePty: (paneId: string, ptyId: string) => void;
   setHostTag: (tabId: string, environment: HostEnvironment) => void;
-  setTabActivity: (tabId: string, hasActivity: boolean) => void;
   toggleSettings: () => void;
   toggleCommandPalette: () => void;
   openCommandPalette: (tab: PaletteTab) => void;
@@ -389,34 +387,6 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set((state) => ({
       tabs: state.tabs.map((t) =>
         t.id === tabId ? { ...t, title } : t
-      ),
-    }));
-  },
-
-  updatePaneTitle: (paneId, title) => {
-    const updatePaneInTree = (panes: Pane[]): Pane[] => {
-      return panes.map((pane) => {
-        if (pane.id === paneId) {
-          return { ...pane, title };
-        }
-        if (pane.children) {
-          return { ...pane, children: updatePaneInTree(pane.children) };
-        }
-        return pane;
-      });
-    };
-    set((state) => ({
-      tabs: state.tabs.map((t) => ({
-        ...t,
-        panes: updatePaneInTree(t.panes),
-      })),
-    }));
-  },
-
-  setTabActivity: (tabId, hasActivity) => {
-    set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId ? { ...t, hasActivity } : t
       ),
     }));
   },

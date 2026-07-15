@@ -3,13 +3,11 @@ export interface Tab {
   title: string;
   panes: Pane[];
   hostTag?: HostTag;
-  hasActivity?: boolean;
 }
 
 export interface Pane {
   id: string;
   ptyId: string | null;
-  title?: string;
   direction?: 'horizontal' | 'vertical';
   children?: Pane[];
   size?: number;

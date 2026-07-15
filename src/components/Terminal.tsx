@@ -5,7 +5,6 @@ import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { open } from '@tauri-apps/plugin-shell';
 import { useTerminalStore } from '../store/terminal';
 import '@xterm/xterm/css/xterm.css';
 
@@ -29,8 +28,6 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const themeRef = useRef(useTerminalStore.getState().theme);
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
   const updateTabTitle = useTerminalStore((s) => s.updateTabTitle);
-  const updatePaneTitle = useTerminalStore((s) => s.updatePaneTitle);
-  const setTabActivity = useTerminalStore((s) => s.setTabActivity);
   const settingsOpen = useTerminalStore((s) => s.settingsOpen);
   const commandPaletteOpen = useTerminalStore((s) => s.commandPaletteOpen);
   const cosmicText = useTerminalStore((s) => s.cosmicText);
@@ -160,15 +157,6 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     fitAddonRef.current = fitAddon;
     termRef.current = term;
 
-    // URL detection - make URLs clickable
-    const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9]+)+([/:][^\s]*)?)/g;
-    term.attachCustomLinkHandler((event: MouseEvent, uri: string) => {
-      event.preventDefault();
-      open(uri).catch((err) => {
-        console.error('Failed to open URL:', err);
-      });
-    });
-
     // Spawn PTY
     invoke<string>('pty_spawn', {}).then((ptyId) => {
       if (isUnmounted) {
@@ -214,16 +202,6 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       const tabId = activeTabIdRef.current;
       if (tabId) {
         updateTabTitle(tabId, title || 'Shell');
-        updatePaneTitle(paneId, title || 'Shell');
-      }
-    });
-
-    // Track activity for notification badges
-    term.onData(() => {
-      const tabId = activeTabIdRef.current;
-      const state = useTerminalStore.getState();
-      if (tabId && tabId !== state.activeTabId) {
-        setTabActivity(tabId, true);
       }
     });
 

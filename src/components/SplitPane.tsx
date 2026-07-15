@@ -6,7 +6,6 @@ import { useTerminalStore } from '../store/terminal';
 interface PaneData {
   id: string;
   ptyId?: string;
-  title?: string;
   direction?: 'horizontal' | 'vertical';
   children?: PaneData[];
   size?: number;
@@ -69,20 +68,13 @@ export function SplitPane({ pane, isFocused, onFocus, searchAddon }: SplitPanePr
 
   if (!pane.children || pane.children.length < 2) {
     return (
-      <div className={`pane ${isActive ? 'focused' : ''}`} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {pane.title && (
-          <div className="pane-title-bar">
-            <span className="pane-title">{pane.title}</span>
-          </div>
-        )}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <Terminal
-            paneId={pane.id}
-            isFocused={isActive}
-            onFocus={() => onFocus(pane.id)}
-            searchAddon={searchAddon}
-          />
-        </div>
+      <div className={`pane ${isActive ? 'focused' : ''}`} style={{ width: '100%', height: '100%' }}>
+        <Terminal
+          paneId={pane.id}
+          isFocused={isActive}
+          onFocus={() => onFocus(pane.id)}
+          searchAddon={searchAddon}
+        />
       </div>
     );
   }

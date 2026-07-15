@@ -74,59 +74,6 @@ impl PtySession {
         })
     }
 
-    pub fn new_ssh(
-        id: String,
-        host: String,
-        port: u16,
-        user: Option<String>,
-    ) -> Result<Self, String> {
-        const DEFAULT_ROWS: u16 = 24;
-        const DEFAULT_COLS: u16 = 80;
-
-        let pty_system = NativePtySystem::default();
-        let pair = pty_system
-            .openpty(PtySize {
-                rows: DEFAULT_ROWS,
-                cols: DEFAULT_COLS,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|e| format!("Failed to open PTY: {}", e))?;
-
-        let ssh_user = user.unwrap_or_else(|| {
-            std::env::var("USER").unwrap_or_else(|_| "root".to_string())
-        });
-
-        log::info!("Spawning SSH session to {}@{}:{} in PTY {}", ssh_user, host, port, id);
-
-        let mut cmd = CommandBuilder::new("ssh");
-        cmd.arg("-o");
-        cmd.arg("StrictHostKeyChecking=no");
-        cmd.arg("-p");
-        cmd.arg(port.to_string());
-        cmd.arg(format!("{}@{}", ssh_user, host));
-
-        let child = pair
-            .slave
-            .spawn_command(cmd)
-            .map_err(|e| format!("Failed to spawn SSH in PTY: {}", e))?;
-
-        drop(pair.slave);
-
-        let reader = pair.master.try_clone_reader()
-            .map_err(|e| format!("Failed to clone PTY reader: {}", e))?;
-        let writer = pair.master.take_writer()
-            .map_err(|e| format!("Failed to take PTY writer: {}", e))?;
-
-        Ok(Self {
-            id,
-            writer: Arc::new(Mutex::new(writer)),
-            reader: Some(reader),
-            child,
-            master: pair.master,
-        })
-    }
-
     pub fn resize(&self, cols: u16, rows: u16) -> Result<(), String> {
         self.master
             .resize(PtySize {

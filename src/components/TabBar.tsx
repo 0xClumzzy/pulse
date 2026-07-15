@@ -7,13 +7,7 @@ export function TabBar() {
   const addTab = useTerminalStore((s) => s.addTab);
   const closeTab = useTerminalStore((s) => s.closeTab);
   const setActiveTab = useTerminalStore((s) => s.setActiveTab);
-  const setTabActivity = useTerminalStore((s) => s.setTabActivity);
   const hostTags = useTerminalStore((s) => s.hostTags);
-
-  const handleTabClick = (tabId: string) => {
-    setTabActivity(tabId, false);
-    setActiveTab(tabId);
-  };
 
   return (
     <div className="tab-bar">
@@ -23,7 +17,7 @@ export function TabBar() {
           <div
             key={tab.id}
             className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
-            onClick={() => handleTabClick(tab.id)}
+            onClick={() => setActiveTab(tab.id)}
             style={tag && tag.environment !== 'unknown' ? {
               borderLeft: `3px solid ${HOST_COLORS[tag.environment]}`,
             } : undefined}
@@ -40,9 +34,6 @@ export function TabBar() {
               </span>
             )}
             <span>{tab.title}</span>
-            {tab.hasActivity && tab.id !== activeTabId && (
-              <span className="tab-activity-badge" />
-            )}
             <span
               className="tab-close"
               onClick={(e) => {
