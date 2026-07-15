@@ -204,6 +204,20 @@ function App() {
       const next = (current + 1) % tabsRef.current.length;
       useTerminalStore.getState().setActiveTab(tabsRef.current[next].id);
     }
+    // Handle Ctrl+Backspace to switch to next tab
+    else if (e.ctrlKey && !e.shiftKey && e.key === 'Backspace') {
+      e.preventDefault();
+      const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
+      const next = (current + 1) % tabsRef.current.length;
+      useTerminalStore.getState().setActiveTab(tabsRef.current[next].id);
+    }
+    // Handle Ctrl+Shift+Backspace to switch to previous tab
+    else if (e.ctrlKey && e.shiftKey && e.key === 'Backspace') {
+      e.preventDefault();
+      const current = tabsRef.current.findIndex((t) => t.id === activeTabIdRef.current);
+      const prev = (current - 1 + tabsRef.current.length) % tabsRef.current.length;
+      useTerminalStore.getState().setActiveTab(tabsRef.current[prev].id);
+    }
     // Handle zoom shortcuts
     else if (matchesKeybinding(e, bindings.zoomIn)) {
       e.preventDefault();

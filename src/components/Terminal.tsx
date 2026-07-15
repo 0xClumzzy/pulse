@@ -93,8 +93,16 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     term.loadAddon(search);
 
     const webLinksAddon = new WebLinksAddon((e, uri) => {
-      if (e instanceof MouseEvent && e.detail === 2) {
-        open(uri);
+      if (e instanceof MouseEvent) {
+        if (e.detail === 2) {
+          open(uri);
+        } else if (e.detail === 1) {
+          navigator.clipboard.writeText(uri).then(() => {
+            setCopied(true);
+            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+            copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
+          }).catch(() => {});
+        }
       }
     }, { willOpen: (e) => { e.preventDefault(); } });
     term.loadAddon(webLinksAddon);
@@ -106,28 +114,21 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     term.open(containerRef.current);
 
-    // Copy on selection
-    term.onSelectionChange(() => {
-      const selection = term.getSelection();
-      if (selection) {
-        navigator.clipboard.writeText(selection).then(() => {
-          setCopied(true);
-          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-          copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
-        }).catch(() => {});
-      }
-    });
-
     // Handle copy/paste
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;
 
-      if (isCtrl && isShift && e.key === 'C') {
+      if (isCtrl && isShift && (e.key === 'c' || e.key === 'C')) {
         if (e.type === 'keydown') {
+          e.preventDefault();
           const selection = term.getSelection();
           if (selection) {
-            navigator.clipboard.writeText(selection).catch((err) => {
+            navigator.clipboard.writeText(selection).then(() => {
+              setCopied(true);
+              if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+              copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
+            }).catch((err) => {
               console.error('Failed to copy to clipboard:', err);
             });
           }
@@ -135,8 +136,9 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
         return false;
       }
 
-      if (isCtrl && isShift && e.key === 'V') {
+      if (isCtrl && isShift && (e.key === 'v' || e.key === 'V')) {
         if (e.type === 'keydown') {
+          e.preventDefault();
           navigator.clipboard.readText().then((text) => {
             if (ptyIdRef.current) {
               invoke('pty_write', { id: ptyIdRef.current, data: text });
