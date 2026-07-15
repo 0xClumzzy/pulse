@@ -3,6 +3,8 @@ import { Terminal as XTerminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { open } from '@tauri-apps/plugin-shell';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalStore } from '../store/terminal';
@@ -89,6 +91,13 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     term.loadAddon(fitAddon);
     term.loadAddon(search);
+
+    const webLinksAddon = new WebLinksAddon((e, uri) => {
+      if (e instanceof MouseEvent && e.detail === 2) {
+        open(uri);
+      }
+    }, { willOpen: (e) => { e.preventDefault(); } });
+    term.loadAddon(webLinksAddon);
 
     // Only set searchAddon ref if this pane is focused
     if (searchAddon && isFocused) {
