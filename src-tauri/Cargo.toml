@@ -25,3 +25,4 @@ tauri-plugin-shell = "2"
 portable-pty = "0.8"
 uuid = { version = "1", features = ["v4"] }
 dirs = "5"
+libc = "0.2"

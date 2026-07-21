@@ -8,7 +8,10 @@ import { Settings } from './components/Settings';
 import { ReconSidebar } from './components/ReconSidebar';
 import { PayloadPalette } from './components/PayloadPalette';
 import { HandlerPanel } from './components/HandlerPanel';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useTerminalStore } from './store/terminal';
+import { useThemeStore } from './store/theme';
+import { useReconStore } from './store/recon';
 import { SearchAddon } from '@xterm/addon-search';
 import './App.css';
 import './styles/glass.css';
@@ -67,18 +70,18 @@ function App() {
   const payloadPaletteOpen = useTerminalStore((s) => s.payloadPaletteOpen);
   const togglePayloadPalette = useTerminalStore((s) => s.togglePayloadPalette);
   const writeToActiveTerminal = useTerminalStore((s) => s.writeToActiveTerminal);
-  const toggleRecon = useTerminalStore((s) => s.toggleRecon);
+  const toggleRecon = useReconStore((s) => s.toggleRecon);
 
   const searchAddon = useRef<SearchAddon | null>(null);
 
-  const initTheme = useTerminalStore((s) => s.initTheme);
+  const initTheme = useThemeStore((s) => s.initTheme);
 
   useEffect(() => {
     initTheme();
   }, [initTheme]);
 
   // Apply theme CSS variables
-  const theme = useTerminalStore((s) => s.theme);
+  const theme = useThemeStore((s) => s.theme);
   useEffect(() => {
     const root = document.documentElement;
     const bg = theme.background;
@@ -248,44 +251,46 @@ function App() {
   }, [handleKeyDown]);
 
   return (
-    <div className="glass-window">
-      <TitleBar />
-      <TabBar />
-      <div className="terminal-container">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            style={{
-              display: tab.id === activeTabId ? 'block' : 'none',
-              width: '100%',
-              height: '100%',
-              position: 'absolute',
-              inset: 0,
-            }}
-          >
-            {tab.panes[0] && (
-              <SplitPane
-                pane={tab.panes[0]}
-                isFocused={tab.id === activeTabId}
-                onFocus={handleFocus}
-                searchAddon={searchAddon}
-              />
-            )}
-          </div>
-        ))}
-        <SearchBar searchAddon={searchAddon} />
-        <ReconSidebar />
-        <HandlerPanel />
+    <ErrorBoundary>
+      <div className="glass-window">
+        <TitleBar />
+        <TabBar />
+        <div className="terminal-container">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              style={{
+                display: tab.id === activeTabId ? 'block' : 'none',
+                width: '100%',
+                height: '100%',
+                position: 'absolute',
+                inset: 0,
+              }}
+            >
+              {tab.panes[0] && (
+                <SplitPane
+                  pane={tab.panes[0]}
+                  isFocused={tab.id === activeTabId}
+                  onFocus={handleFocus}
+                  searchAddon={searchAddon}
+                />
+              )}
+            </div>
+          ))}
+          <SearchBar searchAddon={searchAddon} />
+          <ReconSidebar />
+          <HandlerPanel />
+        </div>
+        <CommandPalette />
+        <Settings />
+        {payloadPaletteOpen && (
+          <PayloadPalette
+            onSelect={handlePayloadSelect}
+            onClose={togglePayloadPalette}
+          />
+        )}
       </div>
-      <CommandPalette />
-      <Settings />
-      {payloadPaletteOpen && (
-        <PayloadPalette
-          onSelect={handlePayloadSelect}
-          onClose={togglePayloadPalette}
-        />
-      )}
-    </div>
+    </ErrorBoundary>
   );
 }
 

@@ -129,6 +129,23 @@ impl PtyManager {
     pub fn list(&self) -> Result<Vec<String>, String> {
         Ok(self.lock_sessions()?.keys().cloned().collect())
     }
+
+    /// Close all sessions gracefully
+    pub fn close_all(&self) {
+        if let Ok(mut sessions) = self.sessions.lock() {
+            for (id, mut session) in sessions.drain() {
+                log::info!("Gracefully closing PTY session: {}", id);
+                session.kill();
+            }
+        }
+    }
+}
+
+impl Drop for PtyManager {
+    fn drop(&mut self) {
+        log::info!("PtyManager dropping, closing all sessions...");
+        self.close_all();
+    }
 }
 
 #[tauri::command]

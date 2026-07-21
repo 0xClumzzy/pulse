@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useReconStore } from '../store/recon';
 import { useTerminalStore } from '../store/terminal';
 import type { ReconEntry } from '../types/terminal';
 
@@ -25,13 +26,13 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function ReconSidebar() {
-  const reconOpen = useTerminalStore((s) => s.reconOpen);
-  const toggleRecon = useTerminalStore((s) => s.toggleRecon);
-  const reconSummary = useTerminalStore((s) => s.reconSummary);
-  const reconEntries = useTerminalStore((s) => s.reconEntries);
-  const hostKeyAlerts = useTerminalStore((s) => s.hostKeyAlerts);
-  const refreshRecon = useTerminalStore((s) => s.refreshRecon);
-  const clearRecon = useTerminalStore((s) => s.clearRecon);
+  const reconOpen = useReconStore((s) => s.reconOpen);
+  const toggleRecon = useReconStore((s) => s.toggleRecon);
+  const reconSummary = useReconStore((s) => s.reconSummary);
+  const reconEntries = useReconStore((s) => s.reconEntries);
+  const hostKeyAlerts = useReconStore((s) => s.hostKeyAlerts);
+  const refreshRecon = useReconStore((s) => s.refreshRecon);
+  const clearRecon = useReconStore((s) => s.clearRecon);
   const activePaneId = useTerminalStore((s) => s.activePaneId);
 
   useEffect(() => {

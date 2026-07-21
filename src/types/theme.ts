@@ -57,6 +57,7 @@ export interface FontConfig {
   weight: string;
   style: string;
   ligatures: boolean;
+  scrollback: number;
 }
 
 export interface GlassConfig {

@@ -8,6 +8,8 @@ import { open } from '@tauri-apps/plugin-shell';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalStore } from '../store/terminal';
+import { useThemeStore } from '../store/theme';
+import type { Theme } from '../types/theme';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalProps {
@@ -15,6 +17,38 @@ interface TerminalProps {
   isFocused: boolean;
   onFocus: () => void;
   searchAddon?: React.MutableRefObject<SearchAddon | null>;
+}
+
+// Shared theme application function
+function applyThemeToTerminal(term: XTerminal, theme: Theme): void {
+  term.options.theme = {
+    background: 'rgba(0,0,0,0)',
+    foreground: theme.foreground,
+    cursor: theme.cursor.cursor,
+    cursorAccent: theme.cursor.text,
+    selectionBackground: theme.selection.background,
+    selectionForeground: theme.selection.foreground,
+    black: theme.palette.black,
+    red: theme.palette.red,
+    green: theme.palette.green,
+    yellow: theme.palette.yellow,
+    blue: theme.palette.blue,
+    magenta: theme.palette.magenta,
+    cyan: theme.palette.cyan,
+    white: theme.palette.white,
+    brightBlack: theme.palette.brightBlack,
+    brightRed: theme.palette.brightRed,
+    brightGreen: theme.palette.brightGreen,
+    brightYellow: theme.palette.brightYellow,
+    brightBlue: theme.palette.brightBlue,
+    brightMagenta: theme.palette.brightMagenta,
+    brightCyan: theme.palette.brightCyan,
+    brightWhite: theme.palette.brightWhite,
+  };
+  term.options.fontFamily = theme.font.family;
+  term.options.fontSize = theme.font.size;
+  term.options.cursorBlink = theme.cursor.blinking;
+  term.options.cursorStyle = theme.cursor.style;
 }
 
 export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalProps) {
@@ -27,13 +61,13 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const themeRef = useRef(useTerminalStore.getState().theme);
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
   const updateTabTitle = useTerminalStore((s) => s.updateTabTitle);
   const settingsOpen = useTerminalStore((s) => s.settingsOpen);
   const commandPaletteOpen = useTerminalStore((s) => s.commandPaletteOpen);
   const cosmicText = useTerminalStore((s) => s.cosmicText);
   const activeTabIdRef = useRef(useTerminalStore.getState().activeTabId);
+  const themeRef = useRef(useThemeStore.getState().theme);
 
   // Subscribe to store changes without re-creating terminal
   useEffect(() => {
@@ -54,37 +88,16 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       fontSize: theme.font.size,
       fontWeight: theme.font.style === 'italic' ? 'normal' : theme.font.weight as any,
       fontStyle: theme.font.style as any,
-      theme: {
-        background: 'rgba(0,0,0,0)',
-        foreground: theme.foreground,
-        cursor: theme.cursor.cursor,
-        cursorAccent: theme.cursor.text,
-        selectionBackground: theme.selection.background,
-        selectionForeground: theme.selection.foreground,
-        black: theme.palette.black,
-        red: theme.palette.red,
-        green: theme.palette.green,
-        yellow: theme.palette.yellow,
-        blue: theme.palette.blue,
-        magenta: theme.palette.magenta,
-        cyan: theme.palette.cyan,
-        white: theme.palette.white,
-        brightBlack: theme.palette.brightBlack,
-        brightRed: theme.palette.brightRed,
-        brightGreen: theme.palette.brightGreen,
-        brightYellow: theme.palette.brightYellow,
-        brightBlue: theme.palette.brightBlue,
-        brightMagenta: theme.palette.brightMagenta,
-        brightCyan: theme.palette.brightCyan,
-        brightWhite: theme.palette.brightWhite,
-      },
       cursorBlink: theme.cursor.blinking,
       cursorStyle: theme.cursor.style,
-      scrollback: 10000,
+      scrollback: theme.font.scrollback || 10000,
       allowProposedApi: true,
       drawBoldTextInBrightColors: true,
       minimumContrastRatio: 1,
     });
+
+    // Apply initial theme
+    applyThemeToTerminal(term, theme);
 
     const fitAddon = new FitAddon();
     const search = new SearchAddon();
@@ -216,7 +229,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       }
     });
 
-    // Debounced resize
+    // Debounced resize (150ms to reduce reflow thrashing)
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
       resizeTimerRef.current = setTimeout(() => {
@@ -231,7 +244,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
             });
           }
         }
-      }, 50);
+      }, 150);
     });
     resizeObserver.observe(containerRef.current);
 
@@ -265,38 +278,10 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
   // Update theme without recreating terminal
   useEffect(() => {
-    const unsub = useTerminalStore.subscribe((state) => {
+    const unsub = useThemeStore.subscribe((state) => {
       const t = termRef.current;
       if (!t) return;
-      const theme = state.theme;
-      t.options.theme = {
-        background: 'rgba(0,0,0,0)',
-        foreground: theme.foreground,
-        cursor: theme.cursor.cursor,
-        cursorAccent: theme.cursor.text,
-        selectionBackground: theme.selection.background,
-        selectionForeground: theme.selection.foreground,
-        black: theme.palette.black,
-        red: theme.palette.red,
-        green: theme.palette.green,
-        yellow: theme.palette.yellow,
-        blue: theme.palette.blue,
-        magenta: theme.palette.magenta,
-        cyan: theme.palette.cyan,
-        white: theme.palette.white,
-        brightBlack: theme.palette.brightBlack,
-        brightRed: theme.palette.brightRed,
-        brightGreen: theme.palette.brightGreen,
-        brightYellow: theme.palette.brightYellow,
-        brightBlue: theme.palette.brightBlue,
-        brightMagenta: theme.palette.brightMagenta,
-        brightCyan: theme.palette.brightCyan,
-        brightWhite: theme.palette.brightWhite,
-      };
-      t.options.fontFamily = theme.font.family;
-      t.options.fontSize = theme.font.size;
-      t.options.cursorBlink = theme.cursor.blinking;
-      t.options.cursorStyle = theme.cursor.style;
+      applyThemeToTerminal(t, state.theme);
     });
     return unsub;
   }, []);

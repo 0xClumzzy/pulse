@@ -1,6 +1,7 @@
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem, MasterPty};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use log;
 
@@ -11,7 +12,7 @@ pub struct PtyEvent {
 }
 
 pub struct PtySession {
-    pub id: String,
+    pub _id: String,
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub reader: Option<Box<dyn Read + Send>>,
     pub child: Box<dyn portable_pty::Child + Send>,
@@ -38,9 +39,44 @@ impl PtySession {
             })
             .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
-        let shell_path = shell.unwrap_or_else(|| {
-            std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
-        });
+        // Validate and resolve shell path
+        let shell_path = match shell {
+            Some(s) => {
+                // Validate shell path exists and is executable
+                let path = Path::new(&s);
+                if !path.exists() {
+                    return Err(format!("Shell not found: {}", s));
+                }
+                if !path.is_file() {
+                    return Err(format!("Shell path is not a file: {}", s));
+                }
+                // Check if file is executable (basic check)
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let metadata = std::fs::metadata(path)
+                        .map_err(|e| format!("Failed to read shell metadata: {}", e))?;
+                    if !metadata.permissions().mode() & 0o111 != 0 {
+                        return Err(format!("Shell is not executable: {}", s));
+                    }
+                }
+                s
+            }
+            None => {
+                std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
+            }
+        };
+
+        // Validate working directory if provided
+        if let Some(ref dir) = cwd {
+            let path = Path::new(dir);
+            if !path.exists() {
+                return Err(format!("Working directory not found: {}", dir));
+            }
+            if !path.is_dir() {
+                return Err(format!("Working directory path is not a directory: {}", dir));
+            }
+        }
 
         log::info!("Spawning shell: {} in PTY {}", shell_path, id);
 
@@ -66,7 +102,7 @@ impl PtySession {
             .map_err(|e| format!("Failed to take PTY writer: {}", e))?;
 
         Ok(Self {
-            id,
+            _id: id,
             writer: Arc::new(Mutex::new(writer)),
             reader: Some(reader),
             child,

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { Theme, ReconSummary } from '../types/theme';
-import type { Tab, Pane, TerminalState, ReconEntry, HostFingerprint, HostKeyAlert, HostTag, HostEnvironment } from '../types/terminal';
-import { catppuccinMocha } from '../themes/catppuccin-mocha';
+import type { Tab, Pane, TerminalState, HostTag, HostEnvironment } from '../types/terminal';
+import { useThemeStore } from './theme';
+import { useReconStore } from './recon';
 
 let tabCounter = 0;
 
@@ -125,20 +125,6 @@ const updatePanePtyInTree = (panes: Pane[], paneId: string, ptyId: string): bool
 export type PayloadEncodeMode = 'none' | 'base64' | 'url';
 export type PaletteTab = 'commands' | 'payloads';
 
-export interface HandlerInfo {
-  id: string;
-  port: number;
-  status: string;
-  connections: ConnectionInfo[];
-}
-
-export interface ConnectionInfo {
-  id: string;
-  remote_addr: string;
-  connected_at: string;
-  status: string;
-}
-
 export function getActivePtyId(state: TerminalStore): string | null {
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
   if (!tab) return null;
@@ -157,13 +143,7 @@ export function getActivePtyId(state: TerminalStore): string | null {
 }
 
 interface TerminalStore extends TerminalState {
-  theme: Theme;
   cosmicText: boolean;
-  reconOpen: boolean;
-  reconSummary: ReconSummary;
-  reconEntries: ReconEntry[];
-  hostKeys: HostFingerprint[];
-  hostKeyAlerts: HostKeyAlert[];
   clipboardAllowed: Record<string, boolean>;
   hostTags: Record<string, HostTag>;
   payloadEncodeMode: PayloadEncodeMode;
@@ -172,10 +152,6 @@ interface TerminalStore extends TerminalState {
   lport: string;
   target: string;
   payloadPaletteOpen: boolean;
-  handlerOpen: boolean;
-  handlers: HandlerInfo[];
-  initTheme: () => Promise<void>;
-  setTheme: (theme: Theme) => void;
   toggleCosmicText: () => void;
   addTab: () => void;
   closeTab: (id: string) => void;
@@ -190,45 +166,17 @@ interface TerminalStore extends TerminalState {
   toggleCommandPalette: () => void;
   openCommandPalette: (tab: PaletteTab) => void;
   toggleSearch: () => void;
-  toggleRecon: () => void;
   togglePayloadPalette: () => void;
-  toggleHandler: () => void;
   toggleClipboard: (ptyId: string) => void;
   movePane: (direction: 'left' | 'right' | 'up' | 'down') => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
-  zoomReset: () => void;
-  refreshRecon: () => Promise<void>;
-  addReconEntries: (entries: ReconEntry[]) => void;
-  addHostKeyAlert: (alert: HostKeyAlert) => void;
-  refreshHostKeys: () => Promise<void>;
-  clearRecon: () => void;
   setPayloadEncodeMode: (mode: PayloadEncodeMode) => void;
   setLhost: (val: string) => void;
   setLport: (val: string) => void;
   setTarget: (val: string) => void;
   writeToActiveTerminal: (data: string) => void;
-  startHandler: (port: number) => Promise<void>;
-  stopHandler: (id: string) => Promise<void>;
-  removeHandler: (id: string) => Promise<void>;
-  refreshHandlers: () => Promise<void>;
 }
 
-const getSavedTheme = async (): Promise<Theme> => {
-  try {
-    const saved = await invoke<string>('load_config');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error('Failed to load saved theme:', e);
-  }
-  return catppuccinMocha;
-};
-
 const initialTab = createTab();
-
-const initialTheme = catppuccinMocha;
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
   tabs: [initialTab],
@@ -237,21 +185,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   settingsOpen: false,
   commandPaletteOpen: false,
   searchOpen: false,
-  reconOpen: false,
   payloadPaletteOpen: false,
-  handlerOpen: false,
-  handlers: [],
-  theme: initialTheme,
   cosmicText: false,
-  reconSummary: {
-    credentials_found: 0,
-    commands_executed: 0,
-    connections_opened: 0,
-    total_sessions: 0,
-  },
-  reconEntries: [],
-  hostKeys: [],
-  hostKeyAlerts: [],
   clipboardAllowed: {},
   hostTags: {},
   payloadEncodeMode: 'none',
@@ -260,19 +195,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   lport: '',
   target: '',
 
-  initTheme: async () => {
-    const saved = await getSavedTheme();
-    set({ theme: saved });
-  },
-
   toggleCosmicText: () => set((state) => ({ cosmicText: !state.cosmicText })),
-
-  setTheme: (theme) => {
-    invoke('save_config', { theme: JSON.stringify(theme) }).catch((e) =>
-      console.error('Failed to save theme:', e)
-    );
-    set({ theme });
-  },
 
   addTab: () => {
     const newTab = createTab();
@@ -428,7 +351,6 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   openCommandPalette: (tab) =>
     set({ commandPaletteOpen: true, commandPaletteInitialTab: tab }),
   toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
-  toggleRecon: () => set((state) => ({ reconOpen: !state.reconOpen })),
   togglePayloadPalette: () => set((state) => ({ payloadPaletteOpen: !state.payloadPaletteOpen })),
 
   toggleClipboard: (ptyId) =>
@@ -438,30 +360,6 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         [ptyId]: !state.clipboardAllowed[ptyId],
       },
     })),
-
-  addReconEntries: (entries) =>
-    set((state) => ({
-      reconEntries: [...state.reconEntries, ...entries].slice(-500),
-    })),
-
-  addHostKeyAlert: (alert) =>
-    set((state) => ({
-      hostKeyAlerts: [...state.hostKeyAlerts, alert],
-    })),
-
-  refreshHostKeys: async () => {
-    try {
-      const keys = await invoke<HostFingerprint[]>('get_host_keys');
-      set({ hostKeys: keys });
-    } catch (e) {
-      console.error('Failed to refresh host keys:', e);
-    }
-  },
-
-  clearRecon: () => {
-    invoke('clear_recon').catch(() => {});
-    set({ reconEntries: [] });
-  },
 
   movePane: (direction) => {
     set((state) => {
@@ -488,92 +386,10 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     });
   },
 
-  zoomIn: () => {
-    const state = get();
-    const newFontSize = Math.min(state.theme.font.size + 2, 72);
-    const newTheme = { ...state.theme, font: { ...state.theme.font, size: newFontSize } };
-    invoke('save_config', { theme: JSON.stringify(newTheme) }).catch((e) =>
-      console.error('Failed to save theme:', e)
-    );
-    set({ theme: newTheme });
-  },
-
-  zoomOut: () => {
-    const state = get();
-    const newFontSize = Math.max(state.theme.font.size - 2, 8);
-    const newTheme = { ...state.theme, font: { ...state.theme.font, size: newFontSize } };
-    invoke('save_config', { theme: JSON.stringify(newTheme) }).catch((e) =>
-      console.error('Failed to save theme:', e)
-    );
-    set({ theme: newTheme });
-  },
-
-  zoomReset: () => {
-    const state = get();
-    const newTheme = { ...state.theme, font: { ...state.theme.font, size: 17 } };
-    invoke('save_config', { theme: JSON.stringify(newTheme) }).catch((e) =>
-      console.error('Failed to save theme:', e)
-    );
-    set({ theme: newTheme });
-  },
-
-  refreshRecon: async () => {
-    try {
-      const summary = await invoke<ReconSummary>('get_recon_summary');
-      set({ reconSummary: summary });
-    } catch (e) {
-      console.error('Failed to refresh recon:', e);
-    }
-  },
-
   setPayloadEncodeMode: (mode) => set({ payloadEncodeMode: mode }),
   setLhost: (val) => set({ lhost: val }),
   setLport: (val) => set({ lport: val }),
   setTarget: (val) => set({ target: val }),
-
-  toggleHandler: () => set((state) => ({ handlerOpen: !state.handlerOpen })),
-
-  startHandler: async (port) => {
-    try {
-      const info = await invoke<HandlerInfo>('handler_start', { port });
-      set((state) => ({ handlers: [...state.handlers, info] }));
-    } catch (e) {
-      console.error('Failed to start handler:', e);
-    }
-  },
-
-  stopHandler: async (id) => {
-    try {
-      await invoke('handler_stop', { id });
-      set((state) => ({
-        handlers: state.handlers.map((h) =>
-          h.id === id ? { ...h, status: 'stopped' } : h
-        ),
-      }));
-    } catch (e) {
-      console.error('Failed to stop handler:', e);
-    }
-  },
-
-  removeHandler: async (id) => {
-    try {
-      await invoke('handler_remove', { id });
-      set((state) => ({
-        handlers: state.handlers.filter((h) => h.id !== id),
-      }));
-    } catch (e) {
-      console.error('Failed to remove handler:', e);
-    }
-  },
-
-  refreshHandlers: async () => {
-    try {
-      const handlers = await invoke<HandlerInfo[]>('handler_list');
-      set({ handlers });
-    } catch (e) {
-      console.error('Failed to refresh handlers:', e);
-    }
-  },
 
   writeToActiveTerminal: (data) => {
     const state = get();

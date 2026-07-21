@@ -62,6 +62,7 @@ export const catppuccinMocha: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
   },
   glass: {
     enabled: true,

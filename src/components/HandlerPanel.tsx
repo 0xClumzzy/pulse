@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useTerminalStore } from '../store/terminal';
+import { useHandlerStore } from '../store/handler';
 
 export function HandlerPanel() {
-  const handlerOpen = useTerminalStore((s) => s.handlerOpen);
-  const toggleHandler = useTerminalStore((s) => s.toggleHandler);
-  const handlers = useTerminalStore((s) => s.handlers);
-  const startHandler = useTerminalStore((s) => s.startHandler);
-  const stopHandler = useTerminalStore((s) => s.stopHandler);
-  const removeHandler = useTerminalStore((s) => s.removeHandler);
+  const handlerOpen = useHandlerStore((s) => s.handlerOpen);
+  const toggleHandler = useHandlerStore((s) => s.toggleHandler);
+  const handlers = useHandlerStore((s) => s.handlers);
+  const startHandler = useHandlerStore((s) => s.startHandler);
+  const stopHandler = useHandlerStore((s) => s.stopHandler);
+  const removeHandler = useHandlerStore((s) => s.removeHandler);
   const [port, setPort] = useState('4444');
 
   if (!handlerOpen) return null;
