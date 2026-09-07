@@ -73,7 +73,6 @@ export function CommandPalette() {
       { id: 'split-v', label: 'Split Vertically', shortcut: 'Ctrl+Shift+E', action: () => { splitPane(activePaneId, 'vertical'); toggleCommandPalette(); }, category: 'Panes' },
       { id: 'settings', label: 'Open Settings', shortcut: 'Ctrl+Shift+,', action: () => { toggleSettings(); toggleCommandPalette(); }, category: 'Settings' },
       { id: 'recon', label: 'Toggle Security Recon', action: () => { toggleRecon(); toggleCommandPalette(); }, category: 'Recon' },
-      { id: 'handler', label: 'Toggle Reverse Shell Handler', action: () => { useTerminalStore.getState().toggleHandler(); toggleCommandPalette(); }, category: 'Handler' },
       { id: 'search', label: 'Search in Scrollback', shortcut: 'Ctrl+Shift+F', action: () => { toggleCommandPalette(); useTerminalStore.getState().toggleSearch(); }, category: 'Search' },
       { id: 'zoom-in', label: 'Zoom In', shortcut: 'Ctrl++', action: () => { useTerminalStore.getState().zoomIn(); toggleCommandPalette(); }, category: 'View' },
       { id: 'zoom-out', label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => { useTerminalStore.getState().zoomOut(); toggleCommandPalette(); }, category: 'View' },
@@ -127,7 +126,7 @@ export function CommandPalette() {
     if (tab === 'commands') return filteredCommands;
     const items: { id: string; label: string; action: () => void }[] = [];
     const ql = query.toLowerCase();
-    const showListeners = query === '' || ql.includes('listen') || ql.includes('nc') || ql.includes('handler');
+    const showListeners = query === '' || ql.includes('listen') || ql.includes('nc');
     const showServe = query === '' || ql.includes('serve') || ql.includes('http') || ql.includes('server');
     if (showListeners) {
       for (const l of LISTENERS) {
@@ -333,7 +332,7 @@ export function CommandPalette() {
                 />
               </div>
 
-              {(query === '' || query.toLowerCase().includes('listen') || query.toLowerCase().includes('nc') || query.toLowerCase().includes('handler')) && (
+              {(query === '' || query.toLowerCase().includes('listen') || query.toLowerCase().includes('nc')) && (
                 <div className="cp-section">
                   <div className="cp-section-title">Listeners</div>
                   {LISTENERS.map((l, i) => (

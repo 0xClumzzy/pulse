@@ -2,9 +2,7 @@
 
 Pulse can be configured via the Settings UI or by editing the configuration file directly.
 
-> **Note:** The configuration file system is planned for a future release. Currently, settings are managed through the Settings UI and persisted via localStorage.
-
-## Configuration File (Planned)
+## Configuration File
 
 Location: `~/.config/pulse/config.toml`
 
@@ -313,7 +311,42 @@ env = {
 name = "catppuccin-mocha"
 ```
 
-## Configuration Validation
+### Pulse Features
+
+```toml
+[pulse]
+# Flash screen on bell character
+visual_bell = false
+
+# Bell flash duration (ms)
+visual_bell_duration = 200
+
+# Notify when commands complete
+command_notifications = true
+
+# Auto-switch theme based on system dark/light mode
+auto_theme_switch = false
+
+# Light theme name (for auto-switching)
+# light_theme = "catppuccin-latte"
+
+# Background image path
+# background_image = "/path/to/image.png"
+
+# Background image opacity (0.0 - 1.0)
+background_image_opacity = 0.2
+
+# Background image fit: contain, cover, stretch
+background_image_fit = "cover"
+
+# Show scrollbar
+scrollbar = true
+
+# Scrollbar style: auto, overlay, always
+scrollbar_style = "overlay"
+```
+
+### Shell Settings
 
 Pulse validates configuration on startup. If there are errors:
 

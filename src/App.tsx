@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { TitleBar } from './components/TitleBar';
 import { TabBar } from './components/TabBar';
 import SplitPane from './components/SplitPane';
@@ -7,7 +8,6 @@ import { CommandPalette } from './components/CommandPalette';
 import { Settings } from './components/Settings';
 import { ReconSidebar } from './components/ReconSidebar';
 import { PayloadPalette } from './components/PayloadPalette';
-import { HandlerPanel } from './components/HandlerPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useTerminalStore } from './store/terminal';
 import { useThemeStore } from './store/theme';
@@ -80,6 +80,24 @@ function App() {
     initTheme();
   }, [initTheme]);
 
+  // Auto light/dark theme switching (Pulse feature)
+  useEffect(() => {
+    const theme = useThemeStore.getState().theme;
+    if (!theme.pulse?.autoThemeSwitch) return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const currentTheme = useThemeStore.getState().theme;
+      if (currentTheme.pulse?.autoThemeSwitch) {
+        // Theme switching logic would go here if light/dark variants are configured
+        console.log('System theme changed:', e.matches ? 'dark' : 'light');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   // Apply theme CSS variables
   const theme = useThemeStore((s) => s.theme);
   useEffect(() => {
@@ -130,7 +148,7 @@ function App() {
   tabsRef.current = tabs;
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const bindings = useTerminalStore.getState().theme.keybindings;
+    const bindings = useThemeStore.getState().theme.keybindings;
 
     if (matchesKeybinding(e, bindings.newTab)) {
       e.preventDefault();
@@ -224,24 +242,27 @@ function App() {
     // Handle zoom shortcuts
     else if (matchesKeybinding(e, bindings.zoomIn)) {
       e.preventDefault();
-      useTerminalStore.getState().zoomIn();
+      useThemeStore.getState().zoomIn();
     }
     else if (matchesKeybinding(e, bindings.zoomOut)) {
       e.preventDefault();
-      useTerminalStore.getState().zoomOut();
+      useThemeStore.getState().zoomOut();
     }
     else if (matchesKeybinding(e, bindings.zoomReset)) {
       e.preventDefault();
-      useTerminalStore.getState().zoomReset();
+      useThemeStore.getState().zoomReset();
     }
-    // Security features
-    else if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+    else if (matchesKeybinding(e, bindings.recon)) {
       e.preventDefault();
       toggleRecon();
     }
-    else if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+    else if (matchesKeybinding(e, bindings.payloadPalette)) {
       e.preventDefault();
       togglePayloadPalette();
+    }
+    else if (matchesKeybinding(e, bindings.quickTerminal)) {
+      e.preventDefault();
+      invoke('toggle_quick_terminal').catch(console.error);
     }
   }, [toggleRecon, togglePayloadPalette]);
 
@@ -279,7 +300,6 @@ function App() {
           ))}
           <SearchBar searchAddon={searchAddon} />
           <ReconSidebar />
-          <HandlerPanel />
         </div>
         <CommandPalette />
         <Settings />

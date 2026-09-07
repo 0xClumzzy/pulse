@@ -1,9 +1,11 @@
 import type { Theme } from '../types/theme';
 import { catppuccinMocha } from './catppuccin-mocha';
 import { catppuccinLatte } from './catppuccin-latte';
+import { ghostty } from './ghostty';
 
 export { catppuccinMocha } from './catppuccin-mocha';
 export { catppuccinLatte } from './catppuccin-latte';
+export { ghostty } from './ghostty';
 
 export const dracula: Theme = {
   metadata: {
@@ -67,6 +69,8 @@ export const dracula: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
+    fontFeatures: [],
   },
   glass: {
     enabled: true,
@@ -112,6 +116,19 @@ export const dracula: Theme = {
     zoomIn: 'Ctrl+Equal',
     zoomOut: 'Ctrl+Minus',
     zoomReset: 'Ctrl+0',
+    payloadPalette: 'Ctrl+Shift+B',
+    recon: 'Ctrl+Shift+R',
+    quickTerminal: 'Ctrl+graveaccent',
+  },
+  pulse: {
+    visualBell: false,
+    visualBellDuration: 200,
+    commandNotifications: true,
+    autoThemeSwitch: false,
+    backgroundImageOpacity: 0.2,
+    backgroundImageFit: 'cover',
+    scrollbar: true,
+    scrollbarStyle: 'overlay',
   },
 };
 
@@ -177,6 +194,8 @@ export const tokyoNight: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
+    fontFeatures: [],
   },
   glass: {
     enabled: true,
@@ -222,6 +241,19 @@ export const tokyoNight: Theme = {
     zoomIn: 'Ctrl+Equal',
     zoomOut: 'Ctrl+Minus',
     zoomReset: 'Ctrl+0',
+    payloadPalette: 'Ctrl+Shift+B',
+    recon: 'Ctrl+Shift+R',
+    quickTerminal: 'Ctrl+graveaccent',
+  },
+  pulse: {
+    visualBell: false,
+    visualBellDuration: 200,
+    commandNotifications: true,
+    autoThemeSwitch: false,
+    backgroundImageOpacity: 0.2,
+    backgroundImageFit: 'cover',
+    scrollbar: true,
+    scrollbarStyle: 'overlay',
   },
 };
 
@@ -287,6 +319,8 @@ export const nord: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
+    fontFeatures: [],
   },
   glass: {
     enabled: true,
@@ -332,6 +366,19 @@ export const nord: Theme = {
     zoomIn: 'Ctrl+Equal',
     zoomOut: 'Ctrl+Minus',
     zoomReset: 'Ctrl+0',
+    payloadPalette: 'Ctrl+Shift+B',
+    recon: 'Ctrl+Shift+R',
+    quickTerminal: 'Ctrl+graveaccent',
+  },
+  pulse: {
+    visualBell: false,
+    visualBellDuration: 200,
+    commandNotifications: true,
+    autoThemeSwitch: false,
+    backgroundImageOpacity: 0.2,
+    backgroundImageFit: 'cover',
+    scrollbar: true,
+    scrollbarStyle: 'overlay',
   },
 };
 
@@ -397,6 +444,8 @@ export const gruvbox: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
+    fontFeatures: [],
   },
   glass: {
     enabled: true,
@@ -442,6 +491,19 @@ export const gruvbox: Theme = {
     zoomIn: 'Ctrl+Equal',
     zoomOut: 'Ctrl+Minus',
     zoomReset: 'Ctrl+0',
+    payloadPalette: 'Ctrl+Shift+B',
+    recon: 'Ctrl+Shift+R',
+    quickTerminal: 'Ctrl+graveaccent',
+  },
+  pulse: {
+    visualBell: false,
+    visualBellDuration: 200,
+    commandNotifications: true,
+    autoThemeSwitch: false,
+    backgroundImageOpacity: 0.2,
+    backgroundImageFit: 'cover',
+    scrollbar: true,
+    scrollbarStyle: 'overlay',
   },
 };
 
@@ -452,4 +514,5 @@ export const builtInThemes: Record<string, Theme> = {
   'tokyo-night': tokyoNight,
   'nord': nord,
   'gruvbox': gruvbox,
+  'ghostty': ghostty,
 };

@@ -9,8 +9,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTerminalStore } from '../store/terminal';
 import { useThemeStore } from '../store/theme';
+import { ShaderEngine } from '../shaders/engine';
 import type { Theme } from '../types/theme';
 import '@xterm/xterm/css/xterm.css';
+
+// Per-pane SearchAddon registry (avoids xterm internals hack)
+const searchAddonRegistry = new Map<string, SearchAddon>();
 
 interface TerminalProps {
   paneId: string;
@@ -53,13 +57,18 @@ function applyThemeToTerminal(term: XTerminal, theme: Theme): void {
 
 export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const shaderCanvasRef = useRef<HTMLCanvasElement>(null);
+  const shaderEngineRef = useRef<ShaderEngine | null>(null);
   const termRef = useRef<XTerminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const ptyIdRef = useRef<string | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlistenRefs = useRef<UnlistenFn[]>([]);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
+  const [bellFlash, setBellFlash] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
 
   const updatePanePty = useTerminalStore((s) => s.updatePanePty);
   const updateTabTitle = useTerminalStore((s) => s.updateTabTitle);
@@ -94,7 +103,13 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       allowProposedApi: true,
       drawBoldTextInBrightColors: true,
       minimumContrastRatio: 1,
+      convertEol: true,
     });
+
+    // Apply font features (ligatures etc.)
+    if (theme.font.fontFeatures && theme.font.fontFeatures.length > 0) {
+      (term.options as any).fontFeatures = theme.font.fontFeatures;
+    }
 
     // Apply initial theme
     applyThemeToTerminal(term, theme);
@@ -120,12 +135,46 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     }, { willOpen: (e) => { e.preventDefault(); } });
     term.loadAddon(webLinksAddon);
 
-    // Only set searchAddon ref if this pane is focused
+    // Only register searchAddon if this pane is focused
     if (searchAddon && isFocused) {
       searchAddon.current = search;
     }
+    searchAddonRegistry.set(paneId, search);
 
     term.open(containerRef.current);
+
+    // Initialize shader engine
+    if (shaderCanvasRef.current && containerRef.current) {
+      const shaderEngine = new ShaderEngine();
+      shaderEngine.init(shaderCanvasRef.current, containerRef.current.querySelector('canvas') as HTMLCanvasElement);
+      if (theme.shader?.enabled && theme.shader.preset !== 'none') {
+        shaderEngine.updateConfig(theme.shader);
+        shaderEngine.startLoop();
+      }
+      shaderEngineRef.current = shaderEngine;
+    }
+
+    // Visual bell handler (Pulse feature)
+    const pulseConfig = theme.pulse;
+    if (pulseConfig?.visualBell) {
+      term.onBell(() => {
+        setBellFlash(true);
+        setTimeout(() => setBellFlash(false), pulseConfig.visualBellDuration || 200);
+      });
+    }
+
+    // OSC 9;4 progress bar handler (Pulse feature)
+    term.parser.registerOscHandler(9, (data: string) => {
+      // OSC 9;4;P format: P is progress (0-100) or -1 for indeterminate
+      const parts = data.split(';');
+      if (parts.length >= 2) {
+        const p = parseInt(parts[1], 10);
+        if (!isNaN(p)) {
+          setProgress(p >= 0 ? Math.min(100, Math.max(0, p)) : null);
+        }
+      }
+      return true;
+    });
 
     // Handle copy/paste
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
@@ -214,6 +263,31 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
           unlistenRefs.current.push(unlisten);
         }
       });
+
+      // Command completion notification (Pulse feature)
+      if (pulseConfig?.commandNotifications) {
+        let lastPrompt = '';
+        term.onData((data) => {
+          // Detect prompt return (PS1 markers)
+          if (data.includes('\n$ ') || data.includes('\n# ') || data.includes('\n> ')) {
+            if (lastPrompt) {
+              const elapsed = Date.now() - lastPrompt;
+              if (elapsed > 1000) {
+                // Command took > 1s, show notification
+                invoke('notify_command_complete', {
+                  title: 'Command Complete',
+                  body: `Finished after ${(elapsed / 1000).toFixed(1)}s`,
+                }).catch(() => {});
+              }
+            }
+            lastPrompt = '';
+          }
+          // Mark prompt detection
+          if (data.endsWith('$ ') || data.endsWith('# ') || data.endsWith('> ')) {
+            lastPrompt = Date.now();
+          }
+        });
+      }
     });
 
     term.onData((data) => {
@@ -263,9 +337,16 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
 
     return () => {
       isUnmounted = true;
+      searchAddonRegistry.delete(paneId);
       resizeObserver.disconnect();
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      if (bellTimerRef.current) clearTimeout(bellTimerRef.current);
       containerRef.current?.removeEventListener('wheel', handleWheel);
+      // Clean up shader engine
+      if (shaderEngineRef.current) {
+        shaderEngineRef.current.stop();
+        shaderEngineRef.current = null;
+      }
       // Clean up Tauri event listeners
       unlistenRefs.current.forEach((unlisten) => unlisten());
       unlistenRefs.current = [];
@@ -282,26 +363,28 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       const t = termRef.current;
       if (!t) return;
       applyThemeToTerminal(t, state.theme);
+      // Update shader engine
+      if (shaderEngineRef.current && state.theme.shader) {
+        shaderEngineRef.current.updateConfig(state.theme.shader);
+        if (state.theme.shader.enabled && state.theme.shader.preset !== 'none') {
+          shaderEngineRef.current.startLoop();
+        } else {
+          shaderEngineRef.current.stop();
+        }
+      }
     });
     return unsub;
   }, []);
 
   // Update searchAddon ref when focus changes
   useEffect(() => {
-    if (isFocused && searchAddon && termRef.current) {
-      // Re-register this pane's search addon when it gains focus
-      const term = termRef.current;
-      const addons = (term as any)._addonManager?._addons;
-      if (addons) {
-        for (const addon of addons) {
-          if (addon.instance instanceof SearchAddon) {
-            searchAddon.current = addon.instance;
-            break;
-          }
-        }
+    if (isFocused && searchAddon) {
+      const registered = searchAddonRegistry.get(paneId);
+      if (registered) {
+        searchAddon.current = registered;
       }
     }
-  }, [isFocused, searchAddon]);
+  }, [isFocused, searchAddon, paneId]);
 
   // Auto-focus when becomes active
   useEffect(() => {
@@ -322,14 +405,42 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
     }
   }, [settingsOpen, commandPaletteOpen, isFocused]);
 
+  const scrollbarEnabled = themeRef.current.pulse?.scrollbar !== false;
+  const shaderEnabled = themeRef.current.shader?.enabled && themeRef.current.shader?.preset !== 'none';
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
         ref={containerRef}
-        className={`terminal ${isFocused ? 'focused' : ''} ${cosmicText ? 'cosmic-enabled' : ''}`}
+        className={`terminal ${isFocused ? 'focused' : ''} ${cosmicText ? 'cosmic-enabled' : ''} ${scrollbarEnabled ? 'scrollbar-visible' : ''}`}
         onClick={onFocus}
-        style={{ width: '100%', height: '100%' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          ...(bellFlash ? { filter: 'brightness(1.3)' } : {}),
+          transition: bellFlash ? 'none' : 'filter 0.2s ease',
+        }}
       />
+      {shaderEnabled && (
+        <canvas
+          ref={shaderCanvasRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
+      {progress !== null && (
+        <div className="progress-bar-container">
+          <div className="progress-bar" style={{ width: `${progress}%` }} />
+          <span className="progress-bar-text">{progress}%</span>
+        </div>
+      )}
       {copied && (
         <div className="copy-toast">Copied</div>
       )}

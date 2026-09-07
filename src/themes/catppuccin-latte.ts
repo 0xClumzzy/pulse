@@ -62,6 +62,8 @@ export const catppuccinLatte: Theme = {
     weight: 'normal',
     style: 'normal',
     ligatures: true,
+    scrollback: 10000,
+    fontFeatures: [],
   },
   glass: {
     enabled: true,
@@ -107,5 +109,18 @@ export const catppuccinLatte: Theme = {
     zoomIn: 'Ctrl+Equal',
     zoomOut: 'Ctrl+Minus',
     zoomReset: 'Ctrl+0',
+    payloadPalette: 'Ctrl+Shift+B',
+    recon: 'Ctrl+Shift+R',
+    quickTerminal: 'Ctrl+graveaccent',
+  },
+  pulse: {
+    visualBell: false,
+    visualBellDuration: 200,
+    commandNotifications: true,
+    autoThemeSwitch: false,
+    backgroundImageOpacity: 0.2,
+    backgroundImageFit: 'cover',
+    scrollbar: true,
+    scrollbarStyle: 'overlay',
   },
 };

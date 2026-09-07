@@ -72,3 +72,10 @@ export const HOST_LABELS: Record<HostEnvironment, string> = {
   homelab: 'HOME',
   unknown: '',
 };
+
+export interface ReconSummary {
+  credentials_found: number;
+  commands_executed: number;
+  connections_opened: number;
+  total_sessions: number;
+}

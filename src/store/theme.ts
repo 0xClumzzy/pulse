@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { Theme } from '../types/theme';
-import { catppuccinMocha } from '../themes/catppuccin-mocha';
+import { ghostty } from '../themes/ghostty';
 
 interface ThemeStore {
   theme: Theme;
@@ -21,11 +21,11 @@ const getSavedTheme = async (): Promise<Theme> => {
   } catch (e) {
     console.error('Failed to load saved theme:', e);
   }
-  return catppuccinMocha;
+  return ghostty;
 };
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
-  theme: catppuccinMocha,
+  theme: ghostty,
 
   initTheme: async () => {
     const saved = await getSavedTheme();

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useThemeStore } from '../store/theme';
 import { useTerminalStore } from '../store/terminal';
 import { builtInThemes } from '../themes';
+import { ShaderEditor } from './ShaderEditor';
 import type { Theme } from '../types/theme';
 
-type SectionId = 'theme' | 'colors' | 'palette' | 'cursor' | 'font' | 'window' | 'glass' | 'tabbar' | 'pane' | 'animations' | 'keybindings';
+type SectionId = 'theme' | 'colors' | 'palette' | 'cursor' | 'font' | 'window' | 'glass' | 'tabbar' | 'pane' | 'animations' | 'keybindings' | 'pulse' | 'shaders';
 
 interface CollapsibleSectionProps {
   id: SectionId;
@@ -64,11 +66,74 @@ function SliderRow({ label, value, min, max, step, onChange, unit }: {
   );
 }
 
+function KeybindRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [recording, setRecording] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Build the keybinding string
+    const parts: string[] = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.altKey) parts.push('Alt');
+    if (e.metaKey) parts.push('Meta');
+
+    let key = e.key;
+    // Normalize special keys
+    if (key === ' ') key = 'Space';
+    else if (key === 'ArrowLeft') key = 'ArrowLeft';
+    else if (key === 'ArrowRight') key = 'ArrowRight';
+    else if (key === 'ArrowUp') key = 'ArrowUp';
+    else if (key === 'ArrowDown') key = 'ArrowDown';
+    else if (key === 'Escape') key = 'Escape';
+    else if (key === 'Tab') key = 'Tab';
+    else if (key === 'Backspace') key = 'Backspace';
+    else if (key === 'Delete') key = 'Delete';
+    else if (key === 'Enter') key = 'Enter';
+    else if (key === '`') key = 'graveaccent';
+    else if (key === ',') key = ',';
+    else if (key === '.') key = '.';
+    else if (key === '-') key = 'Minus';
+    else if (key === '=') key = 'Equal';
+
+    // Skip modifier-only presses
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+    parts.push(key);
+    const binding = parts.join('+');
+    onChange(binding);
+    setRecording(false);
+  }, [onChange]);
+
+  useEffect(() => {
+    if (recording) {
+      window.addEventListener('keydown', handleKeyDown, true);
+      return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }
+  }, [recording, handleKeyDown]);
+
+  return (
+    <div className="settings-row">
+      <span className="settings-label">{label}</span>
+      <button
+        ref={buttonRef}
+        className={`settings-keybind-btn ${recording ? 'recording' : ''}`}
+        onClick={() => setRecording(!recording)}
+      >
+        {recording ? 'Press keys...' : value || 'Unbound'}
+      </button>
+    </div>
+  );
+}
+
 export function Settings() {
   const settingsOpen = useTerminalStore((s) => s.settingsOpen);
   const toggleSettings = useTerminalStore((s) => s.toggleSettings);
-  const theme = useTerminalStore((s) => s.theme);
-  const setTheme = useTerminalStore((s) => s.setTheme);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
   const [openSection, setOpenSection] = useState<SectionId | null>('theme');
 
   const update = (partial: Partial<Theme>) => setTheme({ ...theme, ...partial });
@@ -93,7 +158,17 @@ export function Settings() {
                   key={id}
                   className={`theme-card ${theme.metadata.name === t.metadata.name ? 'active' : ''}`}
                   style={{ background: t.background }}
-                  onClick={() => setTheme(t)}
+                  onClick={() => setTheme({
+                    ...theme,
+                    metadata: t.metadata,
+                    palette: t.palette,
+                    background: t.background,
+                    foreground: t.foreground,
+                    cursor: { ...theme.cursor, cursor: t.cursor.cursor, text: t.cursor.text },
+                    selection: t.selection,
+                    tabBar: { ...theme.tabBar, background: t.tabBar?.background ?? theme.tabBar.background },
+                    pane: { ...theme.pane, activeBorderColor: t.pane?.activeBorderColor ?? theme.pane.activeBorderColor },
+                  })}
                 >
                   <div className="theme-card-name" style={{ color: t.foreground }}>{t.metadata.name}</div>
                   <div className="theme-card-preview">
@@ -477,6 +552,130 @@ export function Settings() {
                 <option value="cubic-bezier(0.85, 0, 0.15, 1)">Circ In Out</option>
               </select>
             </div>
+          </CollapsibleSection>
+
+          {/* Keybindings */}
+          <CollapsibleSection id="keybindings" title="Keybindings" openSection={openSection} setOpenSection={setOpenSection}>
+            <KeybindRow label="New Tab" value={theme.keybindings.newTab} onChange={(v) => update({ keybindings: { ...theme.keybindings, newTab: v } })} />
+            <KeybindRow label="Close Tab" value={theme.keybindings.closeTab} onChange={(v) => update({ keybindings: { ...theme.keybindings, closeTab: v } })} />
+            <KeybindRow label="Next Tab" value={theme.keybindings.nextTab} onChange={(v) => update({ keybindings: { ...theme.keybindings, nextTab: v } })} />
+            <KeybindRow label="Prev Tab" value={theme.keybindings.prevTab} onChange={(v) => update({ keybindings: { ...theme.keybindings, prevTab: v } })} />
+            <KeybindRow label="Split Horizontal" value={theme.keybindings.splitHorizontal} onChange={(v) => update({ keybindings: { ...theme.keybindings, splitHorizontal: v } })} />
+            <KeybindRow label="Split Vertical" value={theme.keybindings.splitVertical} onChange={(v) => update({ keybindings: { ...theme.keybindings, splitVertical: v } })} />
+            <KeybindRow label="Close Pane" value={theme.keybindings.closePane} onChange={(v) => update({ keybindings: { ...theme.keybindings, closePane: v } })} />
+            <KeybindRow label="Pane Left" value={theme.keybindings.paneLeft} onChange={(v) => update({ keybindings: { ...theme.keybindings, paneLeft: v } })} />
+            <KeybindRow label="Pane Right" value={theme.keybindings.paneRight} onChange={(v) => update({ keybindings: { ...theme.keybindings, paneRight: v } })} />
+            <KeybindRow label="Pane Up" value={theme.keybindings.paneUp} onChange={(v) => update({ keybindings: { ...theme.keybindings, paneUp: v } })} />
+            <KeybindRow label="Pane Down" value={theme.keybindings.paneDown} onChange={(v) => update({ keybindings: { ...theme.keybindings, paneDown: v } })} />
+            <KeybindRow label="Copy" value={theme.keybindings.copy} onChange={(v) => update({ keybindings: { ...theme.keybindings, copy: v } })} />
+            <KeybindRow label="Paste" value={theme.keybindings.paste} onChange={(v) => update({ keybindings: { ...theme.keybindings, paste: v } })} />
+            <KeybindRow label="Search" value={theme.keybindings.search} onChange={(v) => update({ keybindings: { ...theme.keybindings, search: v } })} />
+            <KeybindRow label="Command Palette" value={theme.keybindings.commandPalette} onChange={(v) => update({ keybindings: { ...theme.keybindings, commandPalette: v } })} />
+            <KeybindRow label="Settings" value={theme.keybindings.settings} onChange={(v) => update({ keybindings: { ...theme.keybindings, settings: v } })} />
+            <KeybindRow label="Zoom In" value={theme.keybindings.zoomIn} onChange={(v) => update({ keybindings: { ...theme.keybindings, zoomIn: v } })} />
+            <KeybindRow label="Zoom Out" value={theme.keybindings.zoomOut} onChange={(v) => update({ keybindings: { ...theme.keybindings, zoomOut: v } })} />
+            <KeybindRow label="Zoom Reset" value={theme.keybindings.zoomReset} onChange={(v) => update({ keybindings: { ...theme.keybindings, zoomReset: v } })} />
+            <KeybindRow label="Payload Palette" value={theme.keybindings.payloadPalette} onChange={(v) => update({ keybindings: { ...theme.keybindings, payloadPalette: v } })} />
+            <KeybindRow label="Recon" value={theme.keybindings.recon} onChange={(v) => update({ keybindings: { ...theme.keybindings, recon: v } })} />
+            <KeybindRow label="Quick Terminal" value={theme.keybindings.quickTerminal} onChange={(v) => update({ keybindings: { ...theme.keybindings, quickTerminal: v } })} />
+          </CollapsibleSection>
+
+          {/* Pulse Features */}
+          <CollapsibleSection id="pulse" title="Pulse Features" openSection={openSection} setOpenSection={setOpenSection}>
+            <div className="settings-row">
+              <span className="settings-label">Visual Bell</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.pulse?.visualBell ?? false}
+                  onChange={(e) => update({ pulse: { ...theme.pulse, visualBell: e.target.checked, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, commandNotifications: theme.pulse?.commandNotifications ?? true, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true, scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <SliderRow
+              label="Bell Duration"
+              value={theme.pulse?.visualBellDuration ?? 200}
+              min={50}
+              max={1000}
+              step={50}
+              onChange={(v) => update({ pulse: { ...theme.pulse, visualBellDuration: v, visualBell: theme.pulse?.visualBell ?? false, commandNotifications: theme.pulse?.commandNotifications ?? true, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true, scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+              unit="ms"
+            />
+            <div className="settings-row">
+              <span className="settings-label">Command Notifications</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.pulse?.commandNotifications ?? true}
+                  onChange={(e) => update({ pulse: { ...theme.pulse, commandNotifications: e.target.checked, visualBell: theme.pulse?.visualBell ?? false, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true, scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Auto Theme Switch</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.pulse?.autoThemeSwitch ?? false}
+                  onChange={(e) => update({ pulse: { ...theme.pulse, autoThemeSwitch: e.target.checked, visualBell: theme.pulse?.visualBell ?? false, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, commandNotifications: theme.pulse?.commandNotifications ?? true, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true, scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Scrollbar</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.pulse?.scrollbar ?? true}
+                  onChange={(e) => update({ pulse: { ...theme.pulse, scrollbar: e.target.checked, visualBell: theme.pulse?.visualBell ?? false, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, commandNotifications: theme.pulse?.commandNotifications ?? true, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <div className="settings-row">
+              <span className="settings-label">Scrollbar Style</span>
+              <select
+                className="settings-select"
+                value={theme.pulse?.scrollbarStyle ?? 'overlay'}
+                onChange={(e) => update({ pulse: { ...theme.pulse, scrollbarStyle: e.target.value as any, visualBell: theme.pulse?.visualBell ?? false, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, commandNotifications: theme.pulse?.commandNotifications ?? true, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageOpacity: theme.pulse?.backgroundImageOpacity ?? 0.2, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true } })}
+              >
+                <option value="auto">Auto</option>
+                <option value="overlay">Overlay</option>
+                <option value="always">Always</option>
+              </select>
+            </div>
+            <SliderRow
+              label="Background Image Opacity"
+              value={theme.pulse?.backgroundImageOpacity ?? 0.2}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => update({ pulse: { ...theme.pulse, backgroundImageOpacity: v, visualBell: theme.pulse?.visualBell ?? false, visualBellDuration: theme.pulse?.visualBellDuration ?? 200, commandNotifications: theme.pulse?.commandNotifications ?? true, autoThemeSwitch: theme.pulse?.autoThemeSwitch ?? false, backgroundImageFit: theme.pulse?.backgroundImageFit ?? 'cover', scrollbar: theme.pulse?.scrollbar ?? true, scrollbarStyle: theme.pulse?.scrollbarStyle ?? 'overlay' } })}
+            />
+          </CollapsibleSection>
+
+          {/* Shaders */}
+          <CollapsibleSection id="shaders" title="Shaders" openSection={openSection} setOpenSection={setOpenSection}>
+            <div className="settings-row">
+              <span className="settings-label">Enabled</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={theme.shader?.enabled ?? false}
+                  onChange={(e) => update({ shader: { ...theme.shader, enabled: e.target.checked, preset: theme.shader?.preset ?? 'none', customFragment: theme.shader?.customFragment ?? '', intensity: theme.shader?.intensity ?? 1.0, speed: theme.shader?.speed ?? 1.0 } })}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            {(theme.shader?.enabled ?? false) && (
+              <ShaderEditor
+                config={theme.shader ?? { enabled: true, preset: 'none', customFragment: '', intensity: 1.0, speed: 1.0 }}
+                onChange={(shader) => update({ shader })}
+              />
+            )}
           </CollapsibleSection>
 
         </div>

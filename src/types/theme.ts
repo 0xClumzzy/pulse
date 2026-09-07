@@ -58,6 +58,7 @@ export interface FontConfig {
   style: string;
   ligatures: boolean;
   scrollback: number;
+  fontFeatures: string[];
 }
 
 export interface GlassConfig {
@@ -108,6 +109,9 @@ export interface Keybindings {
   zoomIn: string;
   zoomOut: string;
   zoomReset: string;
+  payloadPalette: string;
+  recon: string;
+  quickTerminal: string;
 }
 
 export interface ReconSummary {
@@ -131,4 +135,34 @@ export interface Theme {
   tabBar: TabBarConfig;
   pane: PaneConfig;
   keybindings: Keybindings;
+  pulse: PulseFeatures;
+  shader?: ShaderConfig;
+}
+
+export interface PulseFeatures {
+  visualBell: boolean;
+  visualBellDuration: number;
+  commandNotifications: boolean;
+  autoThemeSwitch: boolean;
+  lightTheme?: string;
+  backgroundImage?: string;
+  backgroundImageOpacity: number;
+  backgroundImageFit: 'contain' | 'cover' | 'stretch';
+  scrollbar: boolean;
+  scrollbarStyle: 'auto' | 'overlay' | 'always';
+}
+
+export interface ShaderPreset {
+  id: string;
+  name: string;
+  fragment: string;
+  uniforms?: Record<string, number>;
+}
+
+export interface ShaderConfig {
+  enabled: boolean;
+  preset: string;
+  customFragment: string;
+  intensity: number;
+  speed: number;
 }
