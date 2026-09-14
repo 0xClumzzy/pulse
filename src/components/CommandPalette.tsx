@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTerminalStore, type PayloadEncodeMode, type PaletteTab } from '../store/terminal';
-import type { HostEnvironment } from '../types/terminal';
 import { PAYLOADS, WORDLISTS, type Payload } from './PayloadPalette';
+import { substituteVars } from '../lib/payload';
 
 const LISTENERS = [
   { id: 'nc', label: 'nc -lvnp {LPORT}', content: 'rlwrap nc -lvnp {LPORT}' },
@@ -20,13 +20,6 @@ const SERVE_CMDS = [
   { id: 'tftp-py', label: 'TFTP server', content: 'python3 -m pyftpdlib -p {LPORT:-69}' },
   { id: 'updog', label: 'Updog (HTTPS)', content: 'updog -p {LPORT:-9090}' },
 ];
-
-function substituteVars(s: string, lhost: string, lport: string, target: string): string {
-  return s
-    .replace(/\{LHOST\}/g, lhost || '127.0.0.1')
-    .replace(/\{LPORT\}/g, lport || '4444')
-    .replace(/\{TARGET\}/g, target || 'example.com');
-}
 
 interface Command {
   id: string;

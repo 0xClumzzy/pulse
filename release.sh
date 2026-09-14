@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION=${1:-v0.1.0}
+VERSION=${1:-v$(node -p "require('./package.json').version")}
 
 echo "Creating release $VERSION..."
 

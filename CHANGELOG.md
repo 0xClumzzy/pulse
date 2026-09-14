@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Glass aesthetics with blur and transparency
 - Multiple tabs with animated switching
 - Split panes (horizontal/vertical)
-- 6 built-in themes (Catppuccin Mocha, Catppuccin Latte, Dracula, Tokyo Night, Nord, Gruvbox)
+- 7 built-in themes (Catppuccin Mocha, Catppuccin Latte, Ghostty, Dracula, Tokyo Night, Nord, Gruvbox)
 - Full settings panel
 - Command palette (Ctrl+Shift+P)
 - Search in scrollback (Ctrl+Shift+F)
@@ -56,9 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Focus indicators with glow effect
 
 #### Theme System
-- 6 built-in themes
+- 7 built-in themes
 - Catppuccin Mocha (default, dark)
 - Catppuccin Latte (light)
+- Ghostty
 - Dracula
 - Tokyo Night
 - Nord
@@ -95,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Frontend**: React 19 + TypeScript
 - **Terminal**: xterm.js 6.0 with WebGL addon
 - **State**: Zustand
-- **Animations**: Framer Motion
+- **Animations**: CSS transitions (glass.css)
 - **Build**: Vite 8
 
 ---

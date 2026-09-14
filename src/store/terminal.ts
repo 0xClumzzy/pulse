@@ -2,30 +2,25 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Tab, Pane, TerminalState, HostTag, HostEnvironment } from '../types/terminal';
+import { uid } from '../lib/uid';
+import { getLeafPanes, splitPaneInTree, closePaneInTree, updatePanePtyInTree } from './paneTree';
 import { useThemeStore } from './theme';
 import { useReconStore } from './recon';
 
 let tabCounter = 0;
 
 const createPane = (ptyId?: string): Pane => ({
-  id: `pane-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+  id: uid('pane'),
   ptyId: ptyId || null,
 });
 
 const createTab = (): Tab => {
   tabCounter++;
   return {
-    id: `tab-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+    id: uid('tab'),
     title: `Shell ${tabCounter}`,
     panes: [createPane()],
   };
-};
-
-const getLeafPanes = (pane: Pane): Pane[] => {
-  if (!pane.children || pane.children.length === 0) {
-    return [pane];
-  }
-  return pane.children.flatMap(getLeafPanes);
 };
 
 // Helper to close all PTY sessions for panes in a tab
@@ -40,86 +35,6 @@ const closePanesInTab = (panes: Pane[]) => {
       closePanesInTab(pane.children);
     }
   }
-};
-
-const splitPaneInTree = (
-  panes: Pane[],
-  targetId: string,
-  newPane: Pane,
-  direction: 'horizontal' | 'vertical'
-): boolean => {
-  for (let i = 0; i < panes.length; i++) {
-    const pane = panes[i];
-    if (pane.id === targetId) {
-      const oldPaneCopy = { ...pane };
-      panes[i] = {
-        id: `pane-parent-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        ptyId: null,
-        direction,
-        children: [oldPaneCopy, newPane],
-        size: 50,
-      };
-      return true;
-    }
-    if (pane.children) {
-      const childrenCopy = [...pane.children];
-      if (splitPaneInTree(childrenCopy, targetId, newPane, direction)) {
-        panes[i] = { ...pane, children: childrenCopy };
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const closePaneInTree = (
-  panes: Pane[],
-  targetId: string,
-  onClosedPty: (ptyId: string) => void
-): boolean => {
-  for (let i = 0; i < panes.length; i++) {
-    const pane = panes[i];
-    if (pane.children) {
-      const targetIndex = pane.children.findIndex((c) => c.id === targetId);
-      if (targetIndex !== -1) {
-        const removedPane = pane.children[targetIndex];
-        if (removedPane.ptyId) {
-          onClosedPty(removedPane.ptyId);
-        }
-        if (removedPane.children) {
-          closePanesInTab(removedPane.children);
-        }
-        const remainingIndex = targetIndex === 0 ? 1 : 0;
-        panes[i] = pane.children[remainingIndex];
-        return true;
-      }
-
-      const childrenCopy = [...pane.children];
-      if (closePaneInTree(childrenCopy, targetId, onClosedPty)) {
-        panes[i] = { ...pane, children: childrenCopy };
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const updatePanePtyInTree = (panes: Pane[], paneId: string, ptyId: string): boolean => {
-  for (let i = 0; i < panes.length; i++) {
-    const pane = panes[i];
-    if (pane.id === paneId) {
-      panes[i] = { ...pane, ptyId };
-      return true;
-    }
-    if (pane.children) {
-      const childrenCopy = [...pane.children];
-      if (updatePanePtyInTree(childrenCopy, paneId, ptyId)) {
-        panes[i] = { ...pane, children: childrenCopy };
-        return true;
-      }
-    }
-  }
-  return false;
 };
 
 export type PayloadEncodeMode = 'none' | 'base64' | 'url';

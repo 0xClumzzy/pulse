@@ -44,7 +44,7 @@
 - **Host Tagging** - Mark tabs as prod/staging/dev/ctf/homelab
 
 ### Customization
-- **6 built-in themes** - Catppuccin, Dracula, Tokyo Night, Nord, Gruvbox
+- **7 built-in themes** - Catppuccin, Ghostty, Dracula, Tokyo Night, Nord, Gruvbox
 - **Full theme editor** - Colors, fonts, glass effects
 - **Custom keybindings** - Terminator-compatible defaults
 - **Live preview** - See changes before applying
@@ -211,6 +211,7 @@ Integrated wordlist paths:
 |-------|---------|---------|
 | Catppuccin Mocha | Dark | `#1e1e2e` background |
 | Catppuccin Latte | Light | `#eff1f5` background |
+| Ghostty | Dark | `#1a1b26` background |
 | Dracula | Dark | `#282a36` background |
 | Tokyo Night | Dark | `#1a1b26` background |
 | Nord | Dark | `#2e3440` background |

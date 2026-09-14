@@ -155,9 +155,6 @@ build_from_source() {
     # Install frontend dependencies
     echo -e "${BLUE}Installing frontend dependencies...${NC}"
     npm install
-    
-    # Remove appimage from bundle targets (requires linuxdeploy)
-    sed -i 's/"targets": \["deb", "rpm", "appimage"\]/"targets": ["deb", "rpm"]/' src-tauri/tauri.conf.json
 
     # Build the app
     echo -e "${BLUE}Building application...${NC}"

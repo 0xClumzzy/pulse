@@ -745,3 +745,109 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running Pulse");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn looks_like_ip_accepts_valid_octets() {
+        assert!(looks_like_ip("192.168.1.1"));
+        assert!(looks_like_ip("10.0.0.1"));
+        assert!(looks_like_ip("256.1.1.1") == false);
+        assert!(looks_like_ip("1.2.3") == false);
+        assert!(looks_like_ip("hostname") == false);
+        assert!(looks_like_ip("1.2.3.4.5") == false);
+    }
+
+    #[test]
+    fn is_private_ip_classifies_ranges() {
+        assert!(is_private_ip("10.1.2.3"));
+        assert!(is_private_ip("192.168.0.1"));
+        assert!(is_private_ip("172.16.0.1"));
+        assert!(is_private_ip("172.31.255.255"));
+        assert!(is_private_ip("127.0.0.1"));
+        assert_eq!(is_private_ip("8.8.8.8"), false);
+        assert_eq!(is_private_ip("172.32.0.1"), false);
+        assert_eq!(is_private_ip("172.15.0.1"), false);
+        assert_eq!(is_private_ip("not-an-ip"), false);
+    }
+
+    #[test]
+    fn extract_after_grabs_content_following_marker() {
+        assert_eq!(
+            extract_after("Starting nmap\ndb3207db ... SHA256:abc123", "SHA256:").as_deref(),
+            Some("abc123")
+        );
+        assert!(extract_after("no marker here", "SHA256:").is_none());
+    }
+
+    #[test]
+    fn extract_line_containing_returns_matching_line() {
+        let data = "info: starting\npassword: hunter2\nuser: admin\n";
+        assert_eq!(extract_line_containing(data, "password"), "password: hunter2");
+        assert_eq!(extract_line_containing(data, "hunter2"), "password: hunter2");
+        assert_eq!(extract_line_containing(data, "nope"), "info: starting");
+    }
+
+    #[test]
+    fn scan_output_captures_known_markers() {
+        let mgr = ReconManager::new();
+        mgr.scan_output(
+            "CVE-2024-1234 CVE-2021-44228 port 22/tcp on 10.0.0.5\n\
+             visiting http://example.com/auth?token=x password=hunter2\n\
+             db3b52bd3e17e6eefb30f6e934fa1a2fca840a0e2b4e1a6c4f8d0e2a4b6c8d0e9f1a3b5c7d9e1f",
+            "pane-1",
+        );
+        let entries = mgr.get_entries();
+        let types: Vec<&str> = entries.iter().map(|e| e.entry_type.as_str()).collect();
+
+        assert!(types.contains(&"cve"));
+        assert!(types.contains(&"credential"));
+        assert!(types.contains(&"port"));
+        assert!(types.contains(&"url"));
+        assert!(types.contains(&"private_ip"));
+        assert!(types.contains(&"base64"));
+        assert!(entries.iter().all(|e| e.pane_id == "pane-1"));
+    }
+
+    #[test]
+    fn scan_output_ignores_public_addresses_and_short_blobs() {
+        let mgr = ReconManager::new();
+        mgr.scan_output("curl http://example.com -> 93.184.216.34 smalltoken", "pane-1");
+        let entries = mgr.get_entries();
+        assert!(entries.iter().all(|e| e.entry_type != "private_ip"));
+        assert!(entries.iter().all(|e| e.entry_type != "base64"));
+    }
+
+    #[test]
+    fn scan_output_caps_entries_at_500() {
+        let mgr = ReconManager::new();
+        let mut blob = String::new();
+        for i in 0..520 {
+            blob.push_str(&format!("CVE-2026-{:04} ", i));
+        }
+        mgr.scan_output(&blob, "pane-1");
+        let entries = mgr.get_entries();
+        assert_eq!(entries.len(), 500);
+    }
+
+    #[test]
+    fn summary_counts_credentials_and_ports() {
+        let mgr = ReconManager::new();
+        mgr.scan_output("password=hunter2 80/tcp", "pane-1");
+        let summary = mgr.get_summary();
+        assert_eq!(summary.credentials_found, 1);
+        assert_eq!(summary.connections_opened, 1);
+        assert_eq!(summary.total_sessions, 0);
+    }
+
+    #[test]
+    fn clear_empties_entries() {
+        let mgr = ReconManager::new();
+        mgr.scan_output("CVE-2026-0001", "pane-1");
+        assert!(!mgr.get_entries().is_empty());
+        mgr.clear();
+        assert!(mgr.get_entries().is_empty());
+    }
+}

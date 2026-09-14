@@ -10,18 +10,20 @@ Several critical and quality-of-life improvements were made across the Rust back
 
 ## Fixes Applied
 
-### 1. Theme Validation & Fallback Defaults ✅
+### 1. Theme Fallback Handling ✅
 
-**Files:** `src/types/theme.ts`, `src/App.tsx`
+**Files:** `src/App.tsx`, `src/store/theme.ts`
 
-**Issue:** Theme fallback for optional palette colors was insufficient. Manual edits to `theme.json` could break rendering.
+**Issue:** Optional palette colors and malformed theme data could break rendering.
 
 **Solution:**
-- Added `PALETTE_DEFAULTS` export with all required colors
-- Implemented `validateTheme()` function that merges incomplete theme with defaults
-- Updated `App.tsx` to validate theme on every render
+- `App.tsx` derives CSS variables with fallback chains for every optional palette entry (e.g. `theme.palette.teal || theme.palette.cyan`)
+- `hexToRgb()` returns a safe default `'30, 30, 46'` instead of crashing on invalid hex
+- Theme store falls back to the built-in `ghostty` theme when config load fails
 
 **Impact:** Prevents crashes from incomplete theme objects
+
+> Note: a dedicated `validateTheme()`/`PALETTE_DEFAULTS` module was originally planned but the fallback-chain approach above is what shipped.
 
 ---
 
@@ -121,33 +123,35 @@ Several critical and quality-of-life improvements were made across the Rust back
 
 The following recommendations require more extensive changes and should be addressed in separate PRs:
 
-- [ ] **Error Boundary Component** — Wrap UI components to catch React errors
-- [ ] **Tests** — Add vitest (frontend) and cargo test (backend) suites
 - [ ] **2D Pane Navigation** — Replace cyclic movement with spatial navigation
 - [ ] **SearchAddon Zustand Storage** — Remove fragile xterm internals access
 - [ ] **Initial PTY Size Parameters** — Accept cols/rows in pty_spawn command
+
+The following recommendations from the original review have since been addressed:
+
+- ✅ **Error Boundary Component** — `src/components/ErrorBoundary.tsx` wraps `App`
+- ✅ **Tests** — Vitest (frontend) and cargo test (backend) suites added
 
 ---
 
 ## Testing Recommendations
 
 1. **Manual Testing**
-   - Edit `~/.config/pulse/theme.json` with incomplete palette → should render without crash
+   - Edit `~/.config/pulse/config.toml` with incomplete/absent fields → should render without crash
    - Kill PTY process during startup → should show error and close pane
    - Spawn many panes rapidly → monitor for memory leaks
    - Watch browser console for `[Pulse]` logs during normal operation
 
-2. **Automated Testing (Future)**
-   - Pane tree operations: split, close, navigate
-   - Theme validation and merging
-   - PTY lifecycle: spawn, resize, write, close
-   - Event subscription cleanup
+2. **Automated Testing** ✅
+   - Pane tree operations: split, close, navigate — `npm test` (Vitest)
+   - Theme validation and merging — `npm test` (Vitest)
+   - Recon pattern scanning and config conversion — `cargo test`
 
 ---
 
 ## Changelog
 
-- ✅ Theme validation function added
+- ✅ Theme fallback handling added
 - ✅ PTY session race condition fixed
 - ✅ UTF-8 handling with logging
 - ✅ Frontend error handling for PTY spawn

@@ -164,7 +164,7 @@ pub struct AnimationConfig {
     pub easing: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeybindingsConfig {
     #[serde(default = "default_new_tab")]
     pub new_tab: String,
@@ -212,7 +212,36 @@ pub struct KeybindingsConfig {
     pub quick_terminal: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+impl Default for KeybindingsConfig {
+    fn default() -> Self {
+        Self {
+            new_tab: default_new_tab(),
+            close_tab: default_close_tab(),
+            next_tab: default_next_tab(),
+            prev_tab: default_prev_tab(),
+            split_horizontal: default_split_horizontal(),
+            split_vertical: default_split_vertical(),
+            close_pane: default_close_pane(),
+            pane_left: default_pane_left(),
+            pane_right: default_pane_right(),
+            pane_up: default_pane_up(),
+            pane_down: default_pane_down(),
+            copy: default_copy(),
+            paste: default_paste(),
+            search: default_search(),
+            command_palette: default_command_palette(),
+            settings: default_settings(),
+            zoom_in: default_zoom_in(),
+            zoom_out: default_zoom_out(),
+            zoom_reset: default_zoom_reset(),
+            payload_palette: default_payload_palette(),
+            recon: default_recon(),
+            quick_terminal: default_quick_terminal(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShellConfig {
     #[serde(default)]
     pub executable: String,
@@ -222,6 +251,17 @@ pub struct ShellConfig {
     pub cwd: String,
     #[serde(default = "default_shell_env")]
     pub env: std::collections::HashMap<String, String>,
+}
+
+impl Default for ShellConfig {
+    fn default() -> Self {
+        Self {
+            executable: String::new(),
+            args: default_shell_args(),
+            cwd: String::new(),
+            env: default_shell_env(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -883,4 +923,97 @@ pub fn config_to_json_theme(config: &PulseConfig) -> serde_json::Value {
             "speed": config.shader.speed
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_config() -> PulseConfig {
+        let mut config = PulseConfig::with_defaults();
+        config.cursor.cursor_color = "#ff0000".to_string();
+        config.cursor.text_color = "#00ff00".to_string();
+        config.window.opacity = 0.42;
+        config.glass.enabled = false;
+        config.keybindings.new_tab = "Ctrl+Alt+T".to_string();
+        config.pulse.auto_theme_switch = true;
+        config
+    }
+
+    #[test]
+    fn defaults_are_sane() {
+        let config = PulseConfig::with_defaults();
+        assert_eq!(config.theme.name, "catppuccin-mocha");
+        assert!(config.glass.enabled);
+        assert_eq!(config.font.size, 14);
+        assert_eq!(config.cursor.style, "block");
+        assert_eq!(config.keybindings.new_tab, "Ctrl+Shift+T");
+        assert_eq!(config.shader.preset, "none");
+    }
+
+    #[test]
+    fn config_to_json_preserves_custom_values() {
+        let json = config_to_json_theme(&sample_config());
+        assert_eq!(json["cursor"]["cursor"], "#ff0000");
+        assert_eq!(json["cursor"]["text"], "#00ff00");
+        assert!((json["window"]["opacity"].as_f64().unwrap() - 0.42).abs() < 1e-9);
+        assert_eq!(json["glass"]["enabled"], false);
+        assert_eq!(json["keybindings"]["newTab"], "Ctrl+Alt+T");
+        assert_eq!(json["pulse"]["autoThemeSwitch"], true);
+    }
+
+    #[test]
+    fn config_to_json_outputs_full_schema() {
+        let json = config_to_json_theme(&PulseConfig::with_defaults());
+        for key in [
+            "metadata",
+            "palette",
+            "background",
+            "foreground",
+            "cursor",
+            "selection",
+            "window",
+            "font",
+            "glass",
+            "animations",
+            "tabBar",
+            "pane",
+            "keybindings",
+            "pulse",
+            "shader",
+        ] {
+            assert!(json.get(key).is_some(), "missing top-level key: {}", key);
+        }
+        for key in [
+            "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white",
+            "brightBlack", "brightRed", "brightGreen", "brightYellow", "brightBlue",
+            "brightMagenta", "brightCyan", "brightWhite",
+        ] {
+            assert!(json["palette"].get(key).is_some(), "missing palette key: {}", key);
+            assert!(
+                json["palette"][key].as_str().unwrap().starts_with('#'),
+                "palette color not hex: {}",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn shader_defaults_round_trip() {
+        let json = config_to_json_theme(&PulseConfig::with_defaults());
+        assert_eq!(json["shader"]["preset"], "none");
+        assert_eq!(json["shader"]["enabled"], false);
+        assert_eq!(json["shader"]["intensity"], 1.0);
+    }
+
+    #[test]
+    fn toml_round_trip_preserves_fields() {
+        let config = sample_config();
+        let content = toml::to_string_pretty(&config).unwrap();
+        let parsed: PulseConfig = toml::from_str(&content).unwrap();
+        assert_eq!(parsed.cursor.cursor_color, "#ff0000");
+        assert_eq!(parsed.keybindings.new_tab, "Ctrl+Alt+T");
+        assert_eq!(parsed.theme.name, "catppuccin-mocha");
+        assert_eq!(parsed.font.size, 14);
+    }
 }
