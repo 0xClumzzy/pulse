@@ -17,7 +17,7 @@
 
 ---
 
-## 🚀 What's New in v2.0.0
+##  What's New in v2.0.0
 
 - **Global clipboard integration** — Copy/paste works with the main machine clipboard
 - **Full Tauri permissions** — All shell and clipboard permissions enabled
@@ -28,28 +28,28 @@
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🖥️ Glass Aesthetics
+### Glass Aesthetics
 - Frosted glass window with real-time blur
 - Noise texture overlay for depth
 - Shimmer animation effects
 - Customizable opacity (0-100%)
 - Drop shadows with configurable intensity
 
-### 📂 Multiplexing
+### Multiplexing
 - **Multiple tabs** — Run separate sessions in each tab
 - **Split panes** — Divide terminals horizontally or vertically
 - **Recursive splits** — Create complex layouts
 - **Drag resize** — Adjust pane sizes with mouse
 
-### ⚡ Performance
+### Performance
 - **GPU-accelerated** — WebGL text rendering via xterm.js
 - **Native backend** — Rust PTY management with zero-copy I/O
 - **120fps animations** — GPU-composited transitions
 - **Low memory** — Tauri's minimal footprint
 
-### 🔒 Security Tools
+### Security Tools
 - **Recon Sidebar** — Auto-extracts CVEs, ports, URLs, hostnames, JWTs, base64, credentials
 - **Payload Palette** — Reverse shells, LFI/SSTI, encoding, enumeration, privesc payloads
 - **Built-in Reverse Shell Handler** — TCP listener with connection management
@@ -58,13 +58,13 @@
 - **Encoding Modes** — Raw, Base64, URL encoding on paste
 - **Host Tagging** — Mark tabs as prod/staging/dev/ctf/homelab
 
-### 🎨 Customization
+### Customization
 - **7 built-in themes** — Catppuccin, Ghostty, Dracula, Tokyo Night, Nord, Gruvbox
 - **Full theme editor** — Colors, fonts, glass effects
 - **Custom keybindings** — Terminator-compatible defaults
 - **Live preview** — See changes before applying
 
-### 📋 Clipboard (v2.0.0)
+### Clipboard (v2.0.0)
 - **Copy (Ctrl+Shift+C)** — Selection to system clipboard
 - **Paste (Ctrl+Shift+V)** — System clipboard to terminal
 - **URL single-click copy** — Copy URLs from web links addon
@@ -73,7 +73,7 @@
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/50c0ff11-7dd1-4bf1-ad1a-83c0a8e8585e" width="49%" alt="Dark mode with Gruvbox Dark theme" />
@@ -149,22 +149,9 @@ Build from source. See [docs/BUILDING.md](docs/BUILDING.md) for details.
 ```bash
 rm ~/.local/bin/pulse
 ```
-
 ---
 
-## 📦 Release Assets (v2.0.0)
-
-| Platform | Package | Download |
-|----------|---------|----------|
-| Linux (x86_64) | Debian (.deb) | `Pulse_2.0.0_amd64.deb` |
-| Linux (x86_64) | RPM | `Pulse-2.0.0-1.x86_64.rpm` |
-| Linux (all) | Binary | `pulse` (21MB) |
-
-✅ **Includes:** Global clipboard integration, all permissions, security tools
-
----
-
-## 📚 Documentation
+##  Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -178,7 +165,7 @@ rm ~/.local/bin/pulse
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+##  Keyboard Shortcuts
 
 ### Tabs
 | Action | Shortcut |
@@ -220,9 +207,9 @@ See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for all shortcuts.
 
 ---
 
-## 🛠️ Security Tools
+##  Security Tools
 
-### 🕵️ Recon Sidebar
+###  Recon Sidebar
 Automatically extracts security-relevant data from terminal output:
 
 - **CVEs and vulnerabilities** — CVE IDs, descriptions
@@ -233,7 +220,7 @@ Automatically extracts security-relevant data from terminal output:
 - **Base64 encoded strings** — Decoded on hover
 - **Credentials and secrets** — Passwords, API keys, tokens
 
-### 📦 Payload Palette
+###  Payload Palette
 Quick access to common payloads:
 
 - **Reverse Shells** — Bash, Python, Perl, Netcat, PHP, Ruby, Groovy, PowerShell
@@ -242,14 +229,14 @@ Quick access to common payloads:
 - **Enumeration** — Nmap, Gobuster, Feroxbuster, Subfinder, Nikto
 - **Privilege Escalation** — LinPEAS, LinEnum, SUID finder
 
-### 🔧 Built-in Handler
+### Built-in Handler
 Start a TCP listener directly in Pulse:
 
 - Listen on any port for incoming reverse shells
 - View active connections
 - Stop/remove handlers
 
-### 📋 Wordlists
+###  Wordlists
 Integrated wordlist paths:
 
 - **RockYou** — Common passwords
@@ -260,7 +247,7 @@ Integrated wordlist paths:
 
 ---
 
-## 🎨 Themes
+##  Themes
 
 | Theme | Variant | Background |
 |-------|---------|------------|
@@ -276,22 +263,22 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 
 ---
 
-## 🛠️ Built With
+##  Built With
 
-- [Tauri](https://tauri.app/) — Desktop framework
-- [Rust](https://www.rust-lang.org/) — Systems language
-- [React](https://react.dev/) — UI library
-- [xterm.js](https://xtermjs.org/) — Terminal emulator
-- [Zustand](https://zustand-demo.pmnd.rs/) — State management
-- [WebGL](https://webgl.org/) — GPU-accelerated rendering
+- [Tauri](https://tauri.app/) - Desktop framework
+- [Rust](https://www.rust-lang.org/) - Systems language
+- [React](https://react.dev/) - UI library
+- [xterm.js](https://xtermjs.org/) - Terminal emulator
+- [Zustand](https://zustand-demo.pmnd.rs/) - State management
+- [WebGL](https://webgl.org/) - GPU-accelerated rendering
 
 ---
 
-## 🛣️ Roadmap
+##  Roadmap
 
-- [x] **Global clipboard integration** — v2.0.0 ✅
-- [x] **Full permissions** — v2.0.0 ✅
-- [x] **26 tests passing** — v2.0.0 ✅
+- [x] **Global clipboard integration** - v2.0.0 
+- [x] **Full permissions** - v2.0.0 
+- [x] **26 tests passing** - v2.0.0 ✅
 - [ ] Sixel graphics support
 - [ ] SSH integration
 - [ ] Session persistence
@@ -302,15 +289,15 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 
 ---
 
-## 📄 License
+## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- Inspired by [Terminator](https://gnome-terminator.org/), [Alacritty](https://alacritty.org/), and [WezTerm](https://wezfurlong.org/wezterm/)
+- Inspired by [Terminator](https://gnome-terminator.org/), [Alacritty](https://alacritty.org/), and [WezTerm](https://wezfurlong.org/wezterm/) and [ghostty](https://ghostty.org/)
 - Theme colors from [Catppuccin](https://catppuccin.com/)
 - Clipboard manager: [Tauri Plugin Clipboard Manager](https://github.com/tauri-apps/plugin-clipboard-manager)
 - Icons from [Twemoji](https://twemoji.twitter.com/)
