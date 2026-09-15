@@ -278,7 +278,7 @@ See [docs/THEMES.md](docs/THEMES.md) for creating custom themes.
 
 - [x] **Global clipboard integration** - v2.0.0 
 - [x] **Full permissions** - v2.0.0 
-- [x] **26 tests passing** - v2.0.0 ✅
+- [x] **26 tests passing** - v2.0.0 
 - [ ] Sixel graphics support
 - [ ] SSH integration
 - [ ] Session persistence
