@@ -7,6 +7,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { open } from '@tauri-apps/plugin-shell';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTerminalStore } from '../store/terminal';
 import { useThemeStore } from '../store/theme';
 import { ShaderEngine } from '../shaders/engine';
@@ -55,6 +56,33 @@ function applyThemeToTerminal(term: XTerminal, theme: Theme): void {
   term.options.cursorStyle = theme.cursor.style;
 }
 
+// Clipboard helpers with Tauri API (primary) and browser fallback
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await writeText(text);
+  } catch (err) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (browserErr) {
+      console.error('Failed to write to clipboard (Tauri and browser):', browserErr);
+      throw browserErr;
+    }
+  }
+}
+
+async function pasteFromClipboard(): Promise<string> {
+  try {
+    return await readText();
+  } catch (err) {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (browserErr) {
+      console.error('Failed to read clipboard (Tauri and browser):', browserErr);
+      throw browserErr;
+    }
+  }
+}
+
 export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shaderCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,6 +95,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pasted, setPasted] = useState(false);
   const [bellFlash, setBellFlash] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -125,7 +154,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
         if (e.detail === 2) {
           open(uri);
         } else if (e.detail === 1) {
-          navigator.clipboard.writeText(uri).then(() => {
+          copyToClipboard(uri).then(() => {
             setCopied(true);
             if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
             copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
@@ -186,7 +215,7 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
           e.preventDefault();
           const selection = term.getSelection();
           if (selection) {
-            navigator.clipboard.writeText(selection).then(() => {
+            copyToClipboard(selection).then(() => {
               setCopied(true);
               if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
               copiedTimerRef.current = setTimeout(() => setCopied(false), 1200);
@@ -201,12 +230,16 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       if (isCtrl && isShift && (e.key === 'v' || e.key === 'V')) {
         if (e.type === 'keydown') {
           e.preventDefault();
-          navigator.clipboard.readText().then((text) => {
+          pasteFromClipboard().then((text) => {
             if (ptyIdRef.current) {
               invoke('pty_write', { id: ptyIdRef.current, data: text });
             }
+            setPasted(true);
+            if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+            copiedTimerRef.current = setTimeout(() => setPasted(false), 1200);
           }).catch((err) => {
             console.error('Failed to paste from clipboard:', err);
+            setPasted(false);
           });
         }
         return false;
@@ -443,6 +476,9 @@ export function Terminal({ paneId, isFocused, onFocus, searchAddon }: TerminalPr
       )}
       {copied && (
         <div className="copy-toast">Copied</div>
+      )}
+      {pasted && (
+        <div className="paste-toast">Pastied</div>
       )}
     </div>
   );
